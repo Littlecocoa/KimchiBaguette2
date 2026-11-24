@@ -1090,7 +1090,7 @@ public class GameScreen extends Screen {
                                         + enemyShip.getWidth() / 2,
                                 enemyShip.getPositionY()
                                         + enemyShip.getHeight() / 2);
-						ScreenShake.add(0.40);
+						ScreenShake.raiseTo(0.40);
                         tryDropChameleonHull(enemyShip);
                         tryDropAnnihilator(enemyShip);
                         tryDropGrenade(enemyShip);
@@ -1127,7 +1127,7 @@ public class GameScreen extends Screen {
                     this.particleSystem.spawnEnemyExplosion(
                             bonusShip.getPositionX() + bonusShip.getWidth() / 2,
                             bonusShip.getPositionY() + bonusShip.getHeight() / 2);
-					ScreenShake.add(0.40);
+					ScreenShake.raiseTo(0.40);
                     tryDropChameleonHull(bonusShip);
                     tryDropHyperfire(bonusShip);
                     recyclable.add(bullet);
@@ -1861,7 +1861,7 @@ public class GameScreen extends Screen {
                                         + enemyShip.getWidth() / 2,
                                 enemyShip.getPositionY()
                                         + enemyShip.getHeight() / 2);
-						ScreenShake.add(0.40);
+						ScreenShake.raiseTo(0.40);
                         tryDropGrenade(enemyShip);
                         tryDropChameleonHull(enemyShip);
                         used = true;
@@ -1878,7 +1878,7 @@ public class GameScreen extends Screen {
                     this.particleSystem.spawnEnemyExplosion(
                             bonusShip.getPositionX() + bonusShip.getWidth() / 2,
                             bonusShip.getPositionY() + bonusShip.getHeight() / 2);
-					ScreenShake.add(0.40);
+					ScreenShake.raiseTo(0.40);
                     tryDropChameleonHull(bonusShip);
                     tryDropHyperfire(bonusShip);
                     used = true;

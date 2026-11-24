@@ -119,6 +119,48 @@ class ScreenShakeTest {
     }
 
     @Test
+    void raiseToLiftsLowTraumaToTheLevel() {
+        ScreenShake.raiseTo(0.4);
+        assertEquals(0.4, ScreenShake.getTrauma());
+        ScreenShake.add(0.1);
+        ScreenShake.raiseTo(0.4);
+        assertEquals(0.5, ScreenShake.getTrauma(), 1e-9);
+    }
+
+    @Test
+    void raiseToRepeatedInOneFrameDoesNotStack() {
+        // Three enemies killed by grenade fragments in the same frame.
+        ScreenShake.add(0.52);
+        ScreenShake.raiseTo(0.40);
+        ScreenShake.raiseTo(0.40);
+        ScreenShake.raiseTo(0.40);
+        assertEquals(0.52, ScreenShake.getTrauma(), 1e-9);
+
+        ScreenShake.reset();
+        for (int kill = 0; kill < 5; kill++)
+            ScreenShake.raiseTo(0.40);
+        assertEquals(0.40, ScreenShake.getTrauma(), 1e-9);
+    }
+
+    @Test
+    void raiseToNeverLowersTrauma() {
+        ScreenShake.add(1.0);
+        ScreenShake.raiseTo(0.4);
+        assertEquals(1.0, ScreenShake.getTrauma());
+    }
+
+    @Test
+    void raiseToIsCappedAndIgnoresInvalidLevels() {
+        ScreenShake.raiseTo(5.0);
+        assertEquals(1.0, ScreenShake.getTrauma());
+        ScreenShake.reset();
+        ScreenShake.raiseTo(-1.0);
+        ScreenShake.raiseTo(0.0);
+        ScreenShake.raiseTo(Double.NaN);
+        assertEquals(0.0, ScreenShake.getTrauma());
+    }
+
+    @Test
     void intensityZeroAlwaysGivesZeroOffset() {
         ScreenShake.setIntensity(0.0);
         for (int i = 0; i < SAMPLES; i++) {

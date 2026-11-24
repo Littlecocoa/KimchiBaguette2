@@ -367,7 +367,7 @@ public class InfiniteGameScreen extends Screen {
 					this.particleSystem.spawnEnemyExplosion(
 							enemy.getPositionX() + enemy.getWidth() / 2,
 							enemy.getPositionY() + enemy.getHeight() / 2);
-					ScreenShake.add(0.40);
+					ScreenShake.raiseTo(0.40);
 					iterator.remove();
 					recyclable.add(bullet);
 					break;
@@ -414,7 +414,7 @@ public class InfiniteGameScreen extends Screen {
 				this.particleSystem.spawnEnemyExplosion(
 						rammed.getPositionX() + rammed.getWidth() / 2,
 						rammed.getPositionY() + rammed.getHeight() / 2);
-				ScreenShake.add(0.40);
+				ScreenShake.raiseTo(0.40);
 				this.ship.destroy();
 				this.ship.triggerDamageFeedback();
 				// Crashed into an enemy: same hit sound as a bullet hit.
