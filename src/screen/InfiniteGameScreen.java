@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import vfx.ParticleSystem;
+import vfx.ScreenShake;
 
 import audio.AudioManager;
 import records.RunSession;
@@ -366,6 +367,7 @@ public class InfiniteGameScreen extends Screen {
 					this.particleSystem.spawnEnemyExplosion(
 							enemy.getPositionX() + enemy.getWidth() / 2,
 							enemy.getPositionY() + enemy.getHeight() / 2);
+					ScreenShake.add(0.40);
 					iterator.remove();
 					recyclable.add(bullet);
 					break;
@@ -391,6 +393,7 @@ public class InfiniteGameScreen extends Screen {
 				this.particleSystem.spawnPlayerExplosion(
 						this.ship.getPositionX() + this.ship.getWidth() / 2,
 						this.ship.getPositionY() + this.ship.getHeight() / 2);
+				ScreenShake.add(0.80);
 				this.lives--;
 				if (this.lives == 1) {
 					AudioManager.playBGM("audio/bgm/music_game_urgent.wav");
@@ -411,6 +414,7 @@ public class InfiniteGameScreen extends Screen {
 				this.particleSystem.spawnEnemyExplosion(
 						rammed.getPositionX() + rammed.getWidth() / 2,
 						rammed.getPositionY() + rammed.getHeight() / 2);
+				ScreenShake.add(0.40);
 				this.ship.destroy();
 				this.ship.triggerDamageFeedback();
 				// Crashed into an enemy: same hit sound as a bullet hit.
@@ -418,6 +422,7 @@ public class InfiniteGameScreen extends Screen {
 				this.particleSystem.spawnPlayerExplosion(
 						this.ship.getPositionX() + this.ship.getWidth() / 2,
 						this.ship.getPositionY() + this.ship.getHeight() / 2);
+				ScreenShake.add(0.80);
 				this.lives--;
 				if (this.lives == 1) {
 					AudioManager.playBGM("audio/bgm/music_game_urgent.wav");
