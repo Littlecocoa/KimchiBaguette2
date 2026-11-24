@@ -1738,8 +1738,10 @@ public final class DrawManager {
     }
 
     /**
-     * Draws a speech bubble above the boss, with a tail pointing down at it.
-     * Nothing is drawn when the text is null or empty.
+     * Draws a speech bubble with a tail pointing at the boss. The bubble sits
+     * above the boss, or below it when there is no room under the HUD, and it
+     * is kept inside the screen even when the boss is at an edge. Nothing is
+     * drawn when the text is null or empty.
      *
      * @param screen
      *            Screen to draw on.
@@ -1765,7 +1767,7 @@ public final class DrawManager {
         int w = bubble.getWidth();
         int h = bubble.getHeight();
         int tipX = bubble.getTailTipX();
-        int baseY = y + h - 1;
+        int baseY = bubble.isBelowBoss() ? y : y + h - 1;
         int tipY = bubble.getTailTipY();
         int half = SpeechBubble.TAIL_HALF_WIDTH;
         int[] tailX = { tipX - half, tipX + half + 1, tipX };
@@ -2324,6 +2326,12 @@ public final class DrawManager {
         public static final int TAIL_GAP = 2;
         /** Half the width of the tail where it meets the box. */
         public static final int TAIL_HALF_WIDTH = 4;
+        /** Smallest gap kept between the bubble and the screen edges. */
+        public static final int SCREEN_MARGIN = 4;
+        /** Bottom of the top HUD (separation line) the bubble must not cover. */
+        public static final int HUD_BOTTOM = 40;
+        /** Height of the boss, used to place the bubble under it. */
+        public static final int BOSS_HEIGHT = entity.Boss.HEIGHT;
         /** Added at the end of a line cut off after the last allowed line. */
         static final String ELLIPSIS = "...";
 
@@ -2334,10 +2342,12 @@ public final class DrawManager {
         private final int height;
         private final int tailTipX;
         private final int tailTipY;
+        private final boolean belowBoss;
 
         private SpeechBubble(final List<String> lines, final int x,
                 final int y, final int width, final int height,
-                final int tailTipX, final int tailTipY) {
+                final int tailTipX, final int tailTipY,
+                final boolean belowBoss) {
             this.lines = lines;
             this.x = x;
             this.y = y;
@@ -2345,6 +2355,7 @@ public final class DrawManager {
             this.height = height;
             this.tailTipX = tailTipX;
             this.tailTipY = tailTipY;
+            this.belowBoss = belowBoss;
         }
 
         /**
@@ -2360,7 +2371,7 @@ public final class DrawManager {
                 return null;
 
             int maxTextWidth = Math.min(MAX_TEXT_WIDTH,
-                    screenWidth - 2 * PADDING);
+                    screenWidth - 2 * (SCREEN_MARGIN + PADDING));
             List<String> lines = wrap(text, metrics, maxTextWidth);
 
             int textWidth = 0;
@@ -2369,12 +2380,23 @@ public final class DrawManager {
             int width = textWidth + 2 * PADDING;
             int height = lines.size() * metrics.getHeight() + 2 * PADDING;
 
-            int x = bossCenterX - width / 2;
-            int y = bossTopY - TAIL_GAP - TAIL_HEIGHT - height;
-            int tipX = bossCenterX;
-            int tipY = y + height - 1 + TAIL_HEIGHT;
+            int x = clamp(bossCenterX - width / 2, SCREEN_MARGIN,
+                    screenWidth - SCREEN_MARGIN - width);
 
-            return new SpeechBubble(lines, x, y, width, height, tipX, tipY);
+            int aboveY = bossTopY - TAIL_GAP - TAIL_HEIGHT - height;
+            boolean below = aboveY < HUD_BOTTOM + SCREEN_MARGIN;
+            int y = below ? bossTopY + BOSS_HEIGHT + TAIL_GAP + TAIL_HEIGHT
+                    : aboveY;
+            y = clamp(y, HUD_BOTTOM + SCREEN_MARGIN,
+                    screenHeight - SCREEN_MARGIN - height);
+
+            // The tail follows the boss but never leaves the box corners.
+            int tipX = clamp(bossCenterX, x + PADDING + TAIL_HALF_WIDTH,
+                    x + width - 1 - PADDING - TAIL_HALF_WIDTH);
+            int tipY = below ? y - TAIL_HEIGHT : y + height - 1 + TAIL_HEIGHT;
+
+            return new SpeechBubble(lines, x, y, width, height, tipX, tipY,
+                    below);
         }
 
         /**
@@ -2431,6 +2453,11 @@ public final class DrawManager {
             return length;
         }
 
+        private static int clamp(final int value, final int min,
+                final int max) {
+            return Math.max(min, Math.min(value, max));
+        }
+
         public List<String> getLines() {
             return this.lines;
         }
@@ -2457,6 +2484,10 @@ public final class DrawManager {
 
         public int getTailTipY() {
             return this.tailTipY;
+        }
+
+        public boolean isBelowBoss() {
+            return this.belowBoss;
         }
     }
 }
