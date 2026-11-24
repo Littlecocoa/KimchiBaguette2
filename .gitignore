@@ -24,7 +24,7 @@
 /.space-invaders/
 
 # Logs and temporary files
-/log/
+/log
 /log.*
 *.log
 *.tmp
