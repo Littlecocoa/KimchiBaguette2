@@ -22,7 +22,7 @@ public class HangarMenuScreen extends Screen {
         super(width, height, fps);
 
         this.returnCode = RETURN_TO_MAIN_MENU;
-        this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
+        this.selectionCooldown = Core.getMenuCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
         this.selectedOption = 0;
     }

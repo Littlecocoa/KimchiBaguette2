@@ -23,7 +23,7 @@ public class GameplaySettingsScreen extends Screen {
         super(width, height, fps);
         this.returnCode = 4;
         this.selectedOption = GameplayConfig.getDifficulty();
-        this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
+        this.selectionCooldown = Core.getMenuCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
     }
 

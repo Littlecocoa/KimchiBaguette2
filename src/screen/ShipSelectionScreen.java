@@ -37,7 +37,7 @@ public class ShipSelectionScreen extends Screen {
         super(width, height, fps);
 
         this.returnCode = RETURN_TO_HANGAR_MENU;
-        this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
+        this.selectionCooldown = Core.getMenuCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
         this.selectedIndex = 0;
     }

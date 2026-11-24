@@ -19,7 +19,7 @@ public class HangarScreen extends Screen {
         super(width, height, fps);
 
         this.returnCode = 1;
-        this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
+        this.selectionCooldown = Core.getMenuCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
         this.previewShip = new Ship(width / 2 - 13, height / 2 - 8);
     }

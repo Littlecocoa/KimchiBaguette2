@@ -25,7 +25,7 @@ public class SettingsScreen extends Screen {
     public SettingsScreen(final int width, final int height, final int fps) {
         super(width, height, fps);
         this.returnCode = 1; // Retour au menu principal
-        this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
+        this.selectionCooldown = Core.getMenuCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
         this.selectedOption = AUDIO_OPTION;
     }
