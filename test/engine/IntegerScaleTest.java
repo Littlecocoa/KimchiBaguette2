@@ -47,6 +47,21 @@ public final class IntegerScaleTest {
 		check(DrawManager.integerScale(800, 600, -1, -1) == 1,
 				"Negative logical size falls back to scale 1");
 
+		// Letterbox margin: centred when there is room, never negative.
+		check(DrawManager.letterbox(492, 492) == 0,
+				"An exact fit needs no margin");
+		check(DrawManager.letterbox(1000, 984) == 8,
+				"Leftover space is split evenly");
+		check(DrawManager.letterbox(1001, 984) == 8,
+				"An odd remainder rounds down rather than overshooting");
+
+		// Frame derives its logical size with the bottom inset added instead
+		// of subtracted, so on Windows the content area comes out smaller than
+		// the logical size. Without the clamp the image would be pulled up by
+		// the bottom inset while the mouse kept reading unshifted coordinates.
+		check(DrawManager.letterbox(481, 497) == 0,
+				"A content area smaller than the image still starts at the edge");
+
 		System.out.println("Integer scale checks passed.");
 	}
 }

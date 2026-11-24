@@ -1600,6 +1600,12 @@ public final class DrawManager {
             if (strategy == null)
                 return;
 
+            // Sampled once: the loops below can present the same frame more
+            // than once, and a fresh offset each time would make which one we
+            // end up showing a matter of luck.
+            int shakeX = ScreenShake.getOffsetX();
+            int shakeY = ScreenShake.getOffsetY();
+
             // The two loops are what BufferStrategy asks for: the contents can
             // be restored or lost while we are drawing, and then the frame has
             // to be painted again before it is shown.
@@ -1607,7 +1613,7 @@ public final class DrawManager {
                 do {
                     Graphics drawGraphics = strategy.getDrawGraphics();
                     try {
-                        present(drawGraphics, screen);
+                        present(drawGraphics, screen, shakeX, shakeY);
                     } finally {
                         drawGraphics.dispose();
                     }
@@ -1651,8 +1657,13 @@ public final class DrawManager {
      *                     Graphics of the current back buffer of the frame.
      * @param screen
      *                     Screen being drawn, which carries the logical size.
+     * @param shakeX
+     *                     Horizontal shake offset, in logical pixels.
+     * @param shakeY
+     *                     Vertical shake offset, in logical pixels.
      */
-    private void present(final Graphics drawGraphics, final Screen screen) {
+    private void present(final Graphics drawGraphics, final Screen screen,
+            final int shakeX, final int shakeY) {
         Insets insets = frame.getInsets();
         int areaWidth = frame.getContentPane().getWidth();
         int areaHeight = frame.getContentPane().getHeight();
@@ -1662,10 +1673,12 @@ public final class DrawManager {
         int scaledWidth = screen.getWidth() * scale;
         int scaledHeight = screen.getHeight() * scale;
 
-        int originX = insets.left + (areaWidth - scaledWidth) / 2
-                + ScreenShake.getOffsetX();
-        int originY = insets.top + (areaHeight - scaledHeight) / 2
-                + ScreenShake.getOffsetY();
+        // The shake is measured in logical pixels, so it has to grow with
+        // the image or it would feel weaker the more we scale up.
+        int originX = insets.left + letterbox(areaWidth, scaledWidth)
+                + shakeX * scale;
+        int originY = insets.top + letterbox(areaHeight, scaledHeight)
+                + shakeY * scale;
 
         // Clipped so that a shake offset cannot smear over the window border.
         drawGraphics.setClip(insets.left, insets.top, areaWidth, areaHeight);
@@ -1680,6 +1693,25 @@ public final class DrawManager {
 
         drawGraphics.drawImage(backBuffer, originX, originY, scaledWidth,
                 scaledHeight, frame);
+    }
+
+    /**
+     * Margin that centres the image in the space available.
+     *
+     * Clamped at zero because the frame can report a content area smaller than
+     * the logical size: Frame derives that size with the bottom inset added
+     * rather than subtracted, which is nothing on macOS but is real on Windows.
+     * Without the clamp the image would be pulled up by that much while the
+     * mouse kept reading unshifted coordinates, and every menu would be off.
+     *
+     * @param area
+     *               Space available along this axis.
+     * @param scaled
+     *               Size the image takes along this axis.
+     * @return Offset from the edge, never negative.
+     */
+    static int letterbox(final int area, final int scaled) {
+        return Math.max(0, (area - scaled) / 2);
     }
 
     /**
