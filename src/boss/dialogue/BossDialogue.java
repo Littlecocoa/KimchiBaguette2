@@ -10,6 +10,7 @@ public class BossDialogue {
         "Is that all you've got?",
         "I will never fall!",
         "I'll eat your little ship!",
+        "You made it this far with just that power?",
         "Subordinates, I leave the rear to you.." 
     };
 
@@ -19,14 +20,18 @@ public class BossDialogue {
         "How weak",
         "You can't beat me that much!!",
         "Catch me before your luck runs out!",
+        "Your luck ends here",
         "I can't believe I fell.." 
     };
 
     public enum Trigger {
-        SPAWN, PHASE_2, PHASE_3, SPECIAL, DEFEATED
+        SPAWN, PHASE_2, PHASE_3, SPECIAL1,SPECIAL2, DEFEATED
     }
 
-    /** Returns a dialogue using an index from 0 to 5. */
+    /**
+     * Returns a dialogue line for the specified boss type
+     * and dialogue trigger.
+     */
     public String getDialogue(final Boss.BossType bossType, Trigger trigger) {
         
         java.util.Objects.requireNonNull(bossType, "bossType");
@@ -41,8 +46,9 @@ public class BossDialogue {
             case SPAWN -> 0;
             case PHASE_2 -> 1;
             case PHASE_3 -> 2;
-            case SPECIAL -> 3;
-            case DEFEATED -> 4;
+            case SPECIAL1 -> 3;
+            case SPECIAL2 -> 4;
+            case DEFEATED -> 5;
         };
 
         return lines[index];
