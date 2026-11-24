@@ -52,9 +52,11 @@ public final class ScreenShake {
 	/**
 	 * Raises trauma to at least the given level, but never lowers it. Use this
 	 * instead of {@link #add(double)} for events that can fire several times
-	 * in one frame, such as enemy explosions: three kills in a frame then shake
-	 * like one, instead of stacking up to a boss-defeat shake. Values that are
-	 * not positive, including NaN, are ignored, and the level is capped at 1.0.
+	 * in one frame or in quick succession, such as enemy explosions: a burst
+	 * of kills shakes like one kill, instead of stacking up to a boss-defeat
+	 * shake. It also adds nothing while a stronger shake is already running.
+	 * Values that are not positive, including NaN, are ignored, and the level
+	 * is capped at 1.0.
 	 *
 	 * @param level
 	 *            Minimum trauma after the call, 0.0 to 1.0.

@@ -1835,7 +1835,7 @@ public class GameScreen extends Screen {
                 this.fragments.addAll(GrenadeFragment.explode(
                         grenade.getCenterX(), grenade.getCenterY()));
 				AudioManager.playSFX("audio/sfx/item_grenade_explode.wav");
-				ScreenShake.add(0.52);
+				ScreenShake.raiseTo(0.52);
             }
         }
         this.grenades.removeAll(exploded);

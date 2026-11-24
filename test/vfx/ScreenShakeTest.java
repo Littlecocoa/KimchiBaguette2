@@ -129,12 +129,12 @@ class ScreenShakeTest {
 
     @Test
     void raiseToRepeatedInOneFrameDoesNotStack() {
-        // Three enemies killed by grenade fragments in the same frame.
-        ScreenShake.add(0.52);
+        // Three kills in one frame while a small shake is still fading out.
+        ScreenShake.add(0.2);
         ScreenShake.raiseTo(0.40);
         ScreenShake.raiseTo(0.40);
         ScreenShake.raiseTo(0.40);
-        assertEquals(0.52, ScreenShake.getTrauma(), 1e-9);
+        assertEquals(0.40, ScreenShake.getTrauma(), 1e-9);
 
         ScreenShake.reset();
         for (int kill = 0; kill < 5; kill++)
