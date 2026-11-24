@@ -6,12 +6,12 @@ public class BossDialogue {
 
     /* boss A dialogues */
     private static final String[] BOSS_A_DIALOGUES = {
-        "You've made it this far by luck!", 
+        "You've made it this far by luck!",
         "Is that all you've got?",
         "I will never fall!",
         "I'll eat your little ship!",
         "You made it this far with just that power?",
-        "Subordinates, I leave the rear to you.." 
+        "Subordinates, I leave the rear to you.."
     };
 
     /* boss B dialogues */
@@ -21,7 +21,7 @@ public class BossDialogue {
         "You can't beat me that much!!",
         "Catch me before your luck runs out!",
         "Your luck ends here",
-        "I can't believe I fell.." 
+        "I can't believe I fell.."
     };
 
     public enum Trigger {
@@ -33,7 +33,7 @@ public class BossDialogue {
      * and dialogue trigger.
      */
     public String getDialogue(final Boss.BossType bossType, Trigger trigger) {
-        
+
         java.util.Objects.requireNonNull(bossType, "bossType");
         java.util.Objects.requireNonNull(trigger, "trigger");
 
