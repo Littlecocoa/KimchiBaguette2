@@ -4,40 +4,47 @@ import entity.Boss;
 
 public class BossDialogue {
 
-    /* boss B dialogues */
+    /* boss A dialogues */
     private static final String[] BOSS_A_DIALOGUES = {
-        "You’ve made it this far by luck!", // Boss pop out
-        "You made it this far with just that power",
+        "You've made it this far by luck!", 
         "Is that all you've got?",
-        "I just eat your little ship!",
         "I will never fall!",
-        "Subordinates, I leave the rear to you.." // Boss defeated
+        "I'll eat your little ship!",
+        "Subordinates, I leave the rear to you.." 
     };
 
     /* boss B dialogues */
     private static final String[] BOSS_B_DIALOGUES = {
-        "Your luck ends here", // Boss pop out
         "The previous boss was the weakest of us",
         "How weak",
         "You can't beat me that much!!",
         "Catch me before your luck runs out!",
-        "I can't believe I fell.." // Boss defeated
+        "I can't believe I fell.." 
     };
 
-    public String getDialogue(final Boss.BossType bossType) {
-        return getDialogue(bossType, 0);
+    public enum Trigger {
+        SPAWN, PHASE_2, PHASE_3, SPECIAL, DEFEATED
     }
 
     /** Returns a dialogue using an index from 0 to 5. */
-    public String getDialogue(final Boss.BossType bossType, final int index) {
-        if (index < 0 || index >= 6) {
-            throw new IndexOutOfBoundsException("Dialogue index must be 0 to 5.");
-        }
-        if (bossType == Boss.BossType.BOSS_A) {
-            return BOSS_A_DIALOGUES[index];
-        } else if (bossType == Boss.BossType.BOSS_B) {
-            return BOSS_B_DIALOGUES[index];
-        }
-        return null;
+    public String getDialogue(final Boss.BossType bossType, Trigger trigger) {
+        
+        java.util.Objects.requireNonNull(bossType, "bossType");
+        java.util.Objects.requireNonNull(trigger, "trigger");
+
+        String[] lines = switch (bossType) {
+            case BOSS_A -> BOSS_A_DIALOGUES;
+            case BOSS_B -> BOSS_B_DIALOGUES;
+        };
+
+        int index = switch (trigger) {
+            case SPAWN -> 0;
+            case PHASE_2 -> 1;
+            case PHASE_3 -> 2;
+            case SPECIAL -> 3;
+            case DEFEATED -> 4;
+        };
+
+        return lines[index];
     }
 }
