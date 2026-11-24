@@ -108,6 +108,7 @@ tasks.named('test', Test) {
 
 // Standalone main() suites run in separate JVMs alongside the JUnit tests.
 def smokeTestClasses = [
+    'boss.BossDialogueTest',
     'PlayerStatSourceTest',
     'PlayerStatusExtraLifeTest',
     'engine.BossSpeechBubbleTest',
