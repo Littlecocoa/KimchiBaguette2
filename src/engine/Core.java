@@ -178,7 +178,7 @@ public final class Core {
 							0, 0);
 
 					// Game & score.
-                    GameClock.reset();
+					GameClock.reset();
 					RunSession runSession = new RunSession(UUID.randomUUID().toString());
 					campaignRewards.startRun(runSession.getRunId());
 					recordsService.startRun(runSession.getRunId());
@@ -300,7 +300,7 @@ public final class Core {
 					break;
 				case 8:
 					// Infinite mode & score.
-                    GameClock.reset();
+					GameClock.reset();
 					RunSession infiniteSession = new RunSession(UUID.randomUUID().toString());
 					recordsService.startRun(infiniteSession.getRunId());
 					currentScreen = new InfiniteGameScreen(gameState, width, height,
@@ -465,8 +465,8 @@ public final class Core {
 	// Runner is separated so handoff and unlock isolation can be checked headlessly.
 	static GameState runCustomLevel(final LevelDefinition definition, final double multiplier,
 			final int width, final int height, final int fps, final Consumer<GameScreen> runner) {
-        GameClock.reset();
-        Objects.requireNonNull(runner, "runner");
+		GameClock.reset();
+		Objects.requireNonNull(runner, "runner");
 		GameScreen custom = GameScreen.forCustomLevel(
 				new GameState(1, 0, MAX_LIVES, 0, 0), definition, multiplier, width, height, fps);
 		runner.accept(custom);
@@ -576,19 +576,19 @@ public final class Core {
 		return new Cooldown(milliseconds);
 	}
 
-    /**
-     * Creates a cooldown for menu screens. It reads the real clock, so it
-     * keeps working while the game is paused.
-     *
-     * @param milliseconds
-     *                     Duration of the cooldown.
-     * @return A new real-time cooldown.
-     */
-    public static Cooldown getMenuCooldown(final int milliseconds) {
-        Cooldown cooldown = new Cooldown(milliseconds);
-        cooldown.useRealTime();
-        return cooldown;
-    }
+	/**
+	 * Creates a cooldown for menu screens. It reads the real clock, so it
+	 * keeps working while the game is paused.
+	 *
+	 * @param milliseconds
+	 *                     Duration of the cooldown.
+	 * @return A new real-time cooldown.
+	 */
+	public static Cooldown getMenuCooldown(final int milliseconds) {
+		Cooldown cooldown = new Cooldown(milliseconds);
+		cooldown.useRealTime();
+		return cooldown;
+	}
 
 	/**
 	 * Controls creation of new cooldowns with variance.
