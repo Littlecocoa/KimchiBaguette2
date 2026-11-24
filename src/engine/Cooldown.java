@@ -16,6 +16,8 @@ public class Cooldown {
 	private int duration;
 	/** Beginning time. */
 	private long time;
+    /** True for menu cooldowns, which must keep running while the game is paused. */
+    private boolean realTime = false;
 
 	/**
 	 * Constructor, established the time until the action can be performed
@@ -63,14 +65,29 @@ public class Cooldown {
 		this.time = 0;
 	}
 
-	/**
-	 * Checks if the cooldown is finished.
-	 *
-	 * @return Cooldown state.
-	 */
+
+    /**
+     * Makes this cooldown read the real clock instead of GameClock. Menus use
+     * this so they keep working while the game is paused.
+     */
+    final void useRealTime() {
+        this.realTime = true;
+    }
+
+    /** @return Current time on the clock this cooldown reads. */
+    private long now() {
+        if (this.realTime)
+            return System.currentTimeMillis();
+        return GameClock.now();
+    }
+    /**
+     * Checks if the cooldown is finished.
+     *
+     * @return Cooldown state.
+     */
 	public final boolean checkFinished() {
 		if ((this.time == 0)
-				|| this.time + this.duration < System.currentTimeMillis())
+				|| this.time + this.duration <  now())
 			return true;
 		return false;
 	}
@@ -104,7 +121,7 @@ public class Cooldown {
 	 * Restarts the cooldown.
 	 */
 	public final void reset() {
-		this.time = System.currentTimeMillis();
+        this.time = now();
 		if (this.variance != 0)
 			this.duration = calculateDuration(this.milliseconds, this.variance,
 					Math.random());

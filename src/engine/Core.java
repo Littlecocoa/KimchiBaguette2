@@ -573,6 +573,20 @@ public final class Core {
 		return new Cooldown(milliseconds);
 	}
 
+    /**
+     * Creates a cooldown for menu screens. It reads the real clock, so it
+     * keeps working while the game is paused.
+     *
+     * @param milliseconds
+     *                     Duration of the cooldown.
+     * @return A new real-time cooldown.
+     */
+    public static Cooldown getMenuCooldown(final int milliseconds) {
+        Cooldown cooldown = new Cooldown(milliseconds);
+        cooldown.useRealTime();
+        return cooldown;
+    }
+
 	/**
 	 * Controls creation of new cooldowns with variance.
 	 *
