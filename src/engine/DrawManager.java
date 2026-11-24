@@ -36,6 +36,7 @@ import entity.Ship;
 import entity.Bullet;
 import vfx.Icon;
 import vfx.RankBadge;
+import vfx.ScreenShake;
 import vfx.ShipSprites;
 import screen.GameModeScreen;
 
@@ -1586,13 +1587,36 @@ public final class DrawManager {
     public void completeDrawing(final Screen screen) {
         try {
             if (graphics != null)
-                graphics.drawImage(backBuffer, frame.getInsets().left,
-                        frame.getInsets().top, frame);
+                graphics.drawImage(backBuffer,
+                        frame.getInsets().left + ScreenShake.getOffsetX(),
+                        frame.getInsets().top + ScreenShake.getOffsetY(),
+                        frame);
         } finally {
             backBufferGraphics.dispose();
             if (graphics != null)
                 graphics.dispose();
         }
+    }
+
+    /**
+     * Draws a boss speech bubble above the boss, or below it when the boss sits
+     * too close to the top of the screen. Long lines wrap onto a second line,
+     * and the bubble is clamped so that it stays on screen.
+     *
+     * Contract only. The bubble is drawn by the speech bubble task (KAN-22,
+     * KAN-23); this draws nothing for now. Callers must skip a null line.
+     *
+     * @param screen
+     *            Screen to draw on.
+     * @param text
+     *            Line to show.
+     * @param bossCenterX
+     *            Horizontal centre of the boss.
+     * @param bossTopY
+     *            Top edge of the boss.
+     */
+    public void drawBossSpeech(final Screen screen, final String text,
+            final int bossCenterX, final int bossTopY) {
     }
 
     public void drawNameInput(final Screen screen, final char[] name,
