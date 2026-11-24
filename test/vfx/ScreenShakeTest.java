@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ScreenShakeTest {
 
-    /** Enough samples to hit both signs and the extremes of the random range. */
+    /** Enough frames to hit both signs and the extremes of the random range. */
     private static final int SAMPLES = 2000;
 
     @BeforeEach
@@ -15,8 +15,16 @@ class ScreenShakeTest {
         ScreenShake.setIntensity(1.0);
     }
 
+    /** Starts a fresh frame with exactly the given trauma. */
+    private static void frameAt(final double trauma) {
+        ScreenShake.reset();
+        ScreenShake.update();
+        ScreenShake.add(trauma);
+    }
+
     @Test
     void noTraumaMeansNoOffset() {
+        ScreenShake.update();
         assertEquals(0.0, ScreenShake.getTrauma());
         assertEquals(0, ScreenShake.getOffsetX());
         assertEquals(0, ScreenShake.getOffsetY());
@@ -42,17 +50,43 @@ class ScreenShakeTest {
     }
 
     @Test
-    void offsetNeverExceedsMaxOffset() {
-        ScreenShake.add(1.0);
-        boolean moved = false;
+    void offsetStaysWithinMaxOffsetAndCanReachIt() {
+        int largest = 0;
         for (int i = 0; i < SAMPLES; i++) {
+            frameAt(1.0);
             int x = ScreenShake.getOffsetX();
             int y = ScreenShake.getOffsetY();
             assertTrue(Math.abs(x) <= ScreenShake.MAX_OFFSET, "x = " + x);
             assertTrue(Math.abs(y) <= ScreenShake.MAX_OFFSET, "y = " + y);
+            largest = Math.max(largest, Math.max(Math.abs(x), Math.abs(y)));
+        }
+        assertEquals(ScreenShake.MAX_OFFSET, largest,
+                "full trauma should be able to reach MAX_OFFSET");
+    }
+
+    @Test
+    void offsetIsStableWithinAFrame() {
+        for (int i = 0; i < SAMPLES; i++) {
+            frameAt(1.0);
+            assertEquals(ScreenShake.getOffsetX(), ScreenShake.getOffsetX());
+            assertEquals(ScreenShake.getOffsetY(), ScreenShake.getOffsetY());
+        }
+    }
+
+    @Test
+    void smallTraumaMovesTheFrameByAtMostOnePixel() {
+        // trauma 0.3: 6 * 0.3 * 0.3 = 0.54, so rounding gives at most 1 pixel,
+        // and does give 1 on some frames. Without the square it would reach 2.
+        boolean moved = false;
+        for (int i = 0; i < SAMPLES; i++) {
+            frameAt(0.3);
+            int x = ScreenShake.getOffsetX();
+            int y = ScreenShake.getOffsetY();
+            assertTrue(Math.abs(x) <= 1, "x = " + x);
+            assertTrue(Math.abs(y) <= 1, "y = " + y);
             moved |= x != 0 || y != 0;
         }
-        assertTrue(moved, "full trauma should actually move the frame");
+        assertTrue(moved, "trauma 0.3 should still move the frame sometimes");
     }
 
     @Test
@@ -74,21 +108,10 @@ class ScreenShakeTest {
     }
 
     @Test
-    void smallTraumaStaysSubtle() {
-        // trauma 0.3 (a grenade) gives 6 * 0.3 * 0.3 = 0.54, under 1 pixel.
-        // Without the square it would be 1.8 and the frame would visibly move.
-        ScreenShake.add(0.3);
-        for (int i = 0; i < SAMPLES; i++) {
-            assertEquals(0, ScreenShake.getOffsetX());
-            assertEquals(0, ScreenShake.getOffsetY());
-        }
-    }
-
-    @Test
     void intensityZeroAlwaysGivesZeroOffset() {
         ScreenShake.setIntensity(0.0);
-        ScreenShake.add(1.0);
         for (int i = 0; i < SAMPLES; i++) {
+            frameAt(1.0);
             assertEquals(0, ScreenShake.getOffsetX());
             assertEquals(0, ScreenShake.getOffsetY());
         }
@@ -98,8 +121,8 @@ class ScreenShakeTest {
     void intensityScalesTheOffset() {
         // Low (0.5) halves the range: at most 3 pixels.
         ScreenShake.setIntensity(0.5);
-        ScreenShake.add(1.0);
         for (int i = 0; i < SAMPLES; i++) {
+            frameAt(1.0);
             assertTrue(Math.abs(ScreenShake.getOffsetX()) <= 3);
             assertTrue(Math.abs(ScreenShake.getOffsetY()) <= 3);
         }
@@ -119,6 +142,7 @@ class ScreenShakeTest {
     @Test
     void resetStopsTheShakeImmediately() {
         ScreenShake.add(1.0);
+        ScreenShake.update();
         ScreenShake.reset();
         assertEquals(0.0, ScreenShake.getTrauma());
         assertEquals(0, ScreenShake.getOffsetX());

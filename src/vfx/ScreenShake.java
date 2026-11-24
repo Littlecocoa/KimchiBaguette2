@@ -29,6 +29,9 @@ public final class ScreenShake {
 	private static double trauma = 0;
 	/** Accessibility multiplier, 0.0 (off) to 1.0 (full). */
 	private static double intensity = 1.0;
+	/** This frame's random direction on each axis, -1.0 to 1.0. */
+	private static double directionX = 0;
+	private static double directionY = 0;
 
 	private ScreenShake() {
 	}
@@ -46,25 +49,33 @@ public final class ScreenShake {
 		trauma = Math.min(1.0, trauma + amount);
 	}
 
-	/** Decays the shake. Call once per frame from the game screen's update. */
+	/**
+	 * Decays the shake and picks this frame's direction. Call once per frame
+	 * from the game screen's update, so that every read of the offset within
+	 * a frame agrees.
+	 */
 	public static void update() {
 		trauma *= DECAY;
 		if (trauma < SNAP)
 			trauma = 0;
+		directionX = RANDOM.nextDouble() * 2 - 1;
+		directionY = RANDOM.nextDouble() * 2 - 1;
 	}
 
 	/**
-	 * @return Horizontal render offset for this frame, in pixels.
+	 * @return Horizontal render offset for this frame, in pixels. Repeated
+	 *         calls return the same value until the next {@link #update()}.
 	 */
 	public static int getOffsetX() {
-		return offset();
+		return offset(directionX);
 	}
 
 	/**
-	 * @return Vertical render offset for this frame, in pixels.
+	 * @return Vertical render offset for this frame, in pixels. Repeated calls
+	 *         return the same value until the next {@link #update()}.
 	 */
 	public static int getOffsetY() {
-		return offset();
+		return offset(directionY);
 	}
 
 	/** Stops the shake immediately, for a pause or a screen change. */
@@ -99,11 +110,15 @@ public final class ScreenShake {
 		return intensity;
 	}
 
-	/** One random offset in [-MAX_OFFSET, MAX_OFFSET], scaled by trauma². */
-	private static int offset() {
+	/**
+	 * Offset in [-MAX_OFFSET, MAX_OFFSET] for one axis, scaled by trauma².
+	 * Rounded rather than truncated, so small trauma still moves the frame by
+	 * a pixel and full trauma can reach MAX_OFFSET.
+	 */
+	private static int offset(final double direction) {
 		if (trauma == 0 || intensity == 0)
 			return 0;
-		double direction = RANDOM.nextDouble() * 2 - 1;
-		return (int) (MAX_OFFSET * trauma * trauma * intensity * direction);
+		return (int) Math.round(
+				MAX_OFFSET * trauma * trauma * intensity * direction);
 	}
 }
