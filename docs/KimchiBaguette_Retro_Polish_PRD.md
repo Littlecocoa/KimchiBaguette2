@@ -166,17 +166,28 @@ graphics.drawImage(backBuffer,
 ```
 add(amount):     trauma = clamp(trauma + amount, 0, 1)
 update():        trauma = trauma * 0.90          // 매 프레임 감쇠
-getOffsetX():    (int) (MAX_OFFSET * trauma * trauma * random(-1, +1) * intensity)
+                 directionX = random(-1, +1)     // 이 프레임의 방향, 축마다 따로
+                 directionY = random(-1, +1)
+getOffsetX():    round(MAX_OFFSET * trauma * trauma * directionX * intensity)
 ```
 
 - **`trauma`를 제곱하는 것이 핵심**. 제곱하지 않으면 작은 흔들림이 질질 끌려서 "흔들리는 게 아니라 떨리는" 느낌이 됨.
+- **반드시 `round`로 반올림할 것. `(int)` 절삭은 안 됨.** `|direction| < 1`이므로
+  절삭하면 `MAX_OFFSET × trauma² < 1`인 구간, 즉 **`trauma ≤ 0.40`이 통째로 0**이 됨.
+  `MAX_OFFSET = 6`인데 실제 최대도 5px에 그치고 범위가 `[-6, 5]`로 비대칭이 됨 (KAN-60).
+- **방향은 축마다 따로 뽑되 `update()`에서 한 번만 뽑을 것.** X·Y가 같은 난수를 쓰면
+  항상 45° 대각선으로만 흔들림. 읽을 때마다 새로 뽑으면 한 프레임 안에서 값이 달라져,
+  오프셋을 두 번 읽는 호출자가 어긋남.
 - `MAX_OFFSET = 6` 픽셀 권장. 448×520 화면에서 6px ≈ 1.3%. 그 이상은 멀미를 유발함.
 - `trauma < 0.01`이면 `0`으로 스냅 + 오프셋 `0` 반환 (잔떨림 제거)
 - `reset()`은 `trauma = 0` 즉시 적용
 - `setIntensity(0.0)`이면 **항상 오프셋 0** (접근성 Off)
 - 상태는 `static`. 호출 지점이 두 화면(`GameScreen`, `InfiniteGameScreen`)에 흩어져 있고 화면당 1개면 충분하므로 싱글턴 비용이 아까움.
 
-**수용 기준 / 단위 테스트** (`test/vfx/ScreenShakeTest.java`, `smokeTestClasses` 등록 필수)
+**수용 기준 / 단위 테스트** (`test/vfx/ScreenShakeTest.java`)
+
+> JUnit으로 작성하면 `test/` 아래에서 자동 발견되므로 **`smokeTestClasses`에 넣지 말 것.**
+> 그 목록은 `main()` 방식 standalone 테스트 전용임.
 
 - `trauma = 0` → `getOffsetX() == 0 && getOffsetY() == 0`
 - `add(1.0)` 후 `update()` 60회 → 오프셋이 `0`으로 수렴
@@ -188,14 +199,23 @@ getOffsetX():    (int) (MAX_OFFSET * trauma * trauma * random(-1, +1) * intensit
 
 **트리거 세기 표**
 
-| 상황 | trauma | 호출 지점 (현재 코드) |
-| --- | ---: | --- |
-| 플레이어 피격 | 0.60 | `GameScreen:1262`, `InfiniteGameScreen:391`/`:418` (`spawnPlayerExplosion` 옆) |
-| 보스 격파 | 1.00 | `GameScreen.handleBossEvent()` → `case DEFEATED:` (`:1478`) |
-| 보스 등장 | 0.50 | `GameScreen.handleBossEvent()` → `case SPAWNED:` (`:1465`) |
-| 보스 페이즈 전환 | 0.40 | `GameScreen.handleBossEvent()` → `case PHASE_CHANGED:` (`:1468`) |
-| 수류탄/섬멸 아이템 폭발 | 0.30 | `Grenade` / `AnnihilatorItem` 폭발 처리부 (`GameScreen` 내 수류탄 처리 구간) |
-| 일반 적 폭발 | 0.15 | `GameScreen:1084`/`:1122`/`:1848`/`:1866`, `InfiniteGameScreen:366`/`:411` |
+| 상황 | trauma | 결과 | 호출 지점 (현재 코드) |
+| --- | ---: | --- | --- |
+| 플레이어 피격 | 0.80 | 4px, 87% | `GameScreen:1262`, `InfiniteGameScreen:391`/`:418` (`spawnPlayerExplosion` 옆) |
+| 보스 격파 | 1.00 | 6px, 92% | `GameScreen.handleBossEvent()` → `case DEFEATED:` (`:1478`) |
+| 보스 등장 | 0.70 | 3px, 83% | `GameScreen.handleBossEvent()` → `case SPAWNED:` (`:1465`) |
+| 보스 페이즈 전환 | 0.60 | 2px, 77% | `GameScreen.handleBossEvent()` → `case PHASE_CHANGED:` (`:1468`) |
+| 수류탄/섬멸 아이템 폭발 | 0.52 | 2px, 69% | `Grenade` / `AnnihilatorItem` 폭발 처리부 (`GameScreen` 내 수류탄 처리 구간) |
+| 일반 적 폭발 | 0.40 | 1px, 48% | `GameScreen:1084`/`:1122`/`:1848`/`:1866`, `InfiniteGameScreen:366`/`:411` |
+
+> **이 값들은 한 번 올렸음.** 처음에 쓴 0.15~0.60은 §5.1의 제곱 곡선과 맞지 않았음.
+> `6 × 0.15² = 0.135`라 **일반 적 폭발이 단 1픽셀도 움직이지 않았고**, 아래 수용
+> 기준의 첫 줄을 충족할 수 없었음 (KAN-60). 제곱은 그대로 둠 — 꼬리를 빠르게
+> 죽이는 게 제곱의 역할이고, 문제는 곡선이 아니라 값이었음. 업계 trauma 모델도
+> 단일 이벤트에 0.4~0.6을 씀.
+>
+> 누적은 안전함. 0.5초 간격으로 적을 연달아 잡아도 감쇠(0.90/프레임)가 추가분을
+> 상쇄해 `trauma`가 0.42 근처에서 평형을 이루므로 계속 1px임.
 
 > **호출 지점을 새로 찾을 필요 없음.**
 >
@@ -207,6 +227,11 @@ getOffsetX():    (int) (MAX_OFFSET * trauma * trauma * random(-1, +1) * intensit
 >   `spawnPlayerExplosion(...)` 호출 바로 아래에 한 줄씩 추가.
 
 또한 각 게임 화면의 `update()`에 `ScreenShake.update()` 호출 1줄, 화면 진입 시 `ScreenShake.reset()` 1줄 추가.
+
+> ⚠️ **`update()`는 매 프레임 반드시 호출해야 함.** 감쇠뿐 아니라 **그 프레임의
+> 흔들림 방향까지 여기서 뽑음** (한 프레임 안에서 오프셋을 여러 번 읽어도 같은
+> 값이 나오게 하기 위함). 호출하지 않으면 감쇠가 안 되는 정도가 아니라 **흔들림이
+> 아예 없음**.
 
 **접근성 설정 (이게 F2-B 작업량의 대부분)**
 
