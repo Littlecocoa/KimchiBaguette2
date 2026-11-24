@@ -8,6 +8,10 @@ import java.awt.Font;
 import java.awt.FontFormatException;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Insets;
+import java.awt.RenderingHints;
+import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -119,8 +123,8 @@ public final class DrawManager {
     private static FileManager fileManager;
     /** Application logger. */
     private static Logger logger;
-    /** Graphics context. */
-    private static Graphics graphics;
+    /** Double buffering, so the frame is presented in one go and on VSync. */
+    private static final int BUFFER_COUNT = 2;
     /** Buffer Graphics. */
     private static Graphics backBufferGraphics;
     /** Buffer image. */
@@ -1566,10 +1570,16 @@ public final class DrawManager {
     }
 
     public void initDrawing(final Screen screen) {
-        backBuffer = new BufferedImage(screen.getWidth(), screen.getHeight(),
-                BufferedImage.TYPE_INT_RGB);
+        // Allocated once and reused. A new image per frame was roughly 0.9 MB
+        // of garbage sixty times a second; the fillRect below is what actually
+        // clears it.
+        if (backBuffer == null
+                || backBuffer.getWidth() != screen.getWidth()
+                || backBuffer.getHeight() != screen.getHeight()) {
+            backBuffer = new BufferedImage(screen.getWidth(),
+                    screen.getHeight(), BufferedImage.TYPE_INT_RGB);
+        }
 
-        graphics = frame == null ? null : frame.getGraphics();
         backBufferGraphics = backBuffer.getGraphics();
 
         backBufferGraphics.setColor(Color.BLACK);
@@ -1586,16 +1596,144 @@ public final class DrawManager {
 
     public void completeDrawing(final Screen screen) {
         try {
-            if (graphics != null)
-                graphics.drawImage(backBuffer,
-                        frame.getInsets().left + ScreenShake.getOffsetX(),
-                        frame.getInsets().top + ScreenShake.getOffsetY(),
-                        frame);
+            BufferStrategy strategy = obtainBufferStrategy();
+            if (strategy == null)
+                return;
+
+            // Sampled once: the loops below can present the same frame more
+            // than once, and a fresh offset each time would make which one we
+            // end up showing a matter of luck.
+            int shakeX = ScreenShake.getOffsetX();
+            int shakeY = ScreenShake.getOffsetY();
+
+            // The two loops are what BufferStrategy asks for: the contents can
+            // be restored or lost while we are drawing, and then the frame has
+            // to be painted again before it is shown.
+            do {
+                do {
+                    Graphics drawGraphics = strategy.getDrawGraphics();
+                    try {
+                        present(drawGraphics, screen, shakeX, shakeY);
+                    } finally {
+                        drawGraphics.dispose();
+                    }
+                } while (strategy.contentsRestored());
+                strategy.show();
+            } while (strategy.contentsLost());
         } finally {
             backBufferGraphics.dispose();
-            if (graphics != null)
-                graphics.dispose();
         }
+    }
+
+    /**
+     * @return The frame's buffer strategy, creating it on first use, or
+     *         {@code null} while the frame cannot provide one yet.
+     */
+    private BufferStrategy obtainBufferStrategy() {
+        if (frame == null)
+            return null;
+
+        BufferStrategy strategy = frame.getBufferStrategy();
+        if (strategy != null)
+            return strategy;
+
+        try {
+            // We paint every frame ourselves, so Swing repainting on top of it
+            // would only cause tearing.
+            frame.setIgnoreRepaint(true);
+            frame.createBufferStrategy(BUFFER_COUNT);
+        } catch (IllegalStateException e) {
+            // Frame not displayable yet. The next frame will try again.
+            return null;
+        }
+        return frame.getBufferStrategy();
+    }
+
+    /**
+     * Scales the back buffer onto the frame by a whole number, centred, with
+     * the leftover space left black.
+     *
+     * @param drawGraphics
+     *                     Graphics of the current back buffer of the frame.
+     * @param screen
+     *                     Screen being drawn, which carries the logical size.
+     * @param shakeX
+     *                     Horizontal shake offset, in logical pixels.
+     * @param shakeY
+     *                     Vertical shake offset, in logical pixels.
+     */
+    private void present(final Graphics drawGraphics, final Screen screen,
+            final int shakeX, final int shakeY) {
+        Insets insets = frame.getInsets();
+        int areaWidth = frame.getContentPane().getWidth();
+        int areaHeight = frame.getContentPane().getHeight();
+
+        int scale = integerScale(areaWidth, areaHeight, screen.getWidth(),
+                screen.getHeight());
+        int scaledWidth = screen.getWidth() * scale;
+        int scaledHeight = screen.getHeight() * scale;
+
+        // The shake is measured in logical pixels, so it has to grow with
+        // the image or it would feel weaker the more we scale up.
+        int originX = insets.left + letterbox(areaWidth, scaledWidth)
+                + shakeX * scale;
+        int originY = insets.top + letterbox(areaHeight, scaledHeight)
+                + shakeY * scale;
+
+        // Clipped so that a shake offset cannot smear over the window border.
+        drawGraphics.setClip(insets.left, insets.top, areaWidth, areaHeight);
+        drawGraphics.setColor(Color.BLACK);
+        drawGraphics.fillRect(insets.left, insets.top, areaWidth, areaHeight);
+
+        if (drawGraphics instanceof Graphics2D)
+            // Anything but nearest neighbour turns the pixel art to mush.
+            ((Graphics2D) drawGraphics).setRenderingHint(
+                    RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+
+        drawGraphics.drawImage(backBuffer, originX, originY, scaledWidth,
+                scaledHeight, frame);
+    }
+
+    /**
+     * Margin that centres the image in the space available.
+     *
+     * Clamped at zero because the frame can report a content area smaller than
+     * the logical size: Frame derives that size with the bottom inset added
+     * rather than subtracted, which is nothing on macOS but is real on Windows.
+     * Without the clamp the image would be pulled up by that much while the
+     * mouse kept reading unshifted coordinates, and every menu would be off.
+     *
+     * @param area
+     *               Space available along this axis.
+     * @param scaled
+     *               Size the image takes along this axis.
+     * @return Offset from the edge, never negative.
+     */
+    static int letterbox(final int area, final int scaled) {
+        return Math.max(0, (area - scaled) / 2);
+    }
+
+    /**
+     * Largest whole-number scale that still fits. Non-integer scales blur the
+     * pixel art, so the leftover space becomes a letterbox instead.
+     *
+     * @param areaWidth
+     *                      Width available to draw on.
+     * @param areaHeight
+     *                      Height available to draw on.
+     * @param logicalWidth
+     *                      Width of the game's own coordinate space.
+     * @param logicalHeight
+     *                      Height of the game's own coordinate space.
+     * @return Scale factor, never below 1.
+     */
+    static int integerScale(final int areaWidth, final int areaHeight,
+            final int logicalWidth, final int logicalHeight) {
+        if (logicalWidth <= 0 || logicalHeight <= 0)
+            return 1;
+        return Math.max(1, Math.min(areaWidth / logicalWidth,
+                areaHeight / logicalHeight));
     }
 
     /**
