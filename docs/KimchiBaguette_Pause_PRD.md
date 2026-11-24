@@ -301,7 +301,7 @@ Before opening a PR:
 - [ ] Debug code and leftover comments removed
 - [ ] Commit messages follow the team format
 - [ ] New standalone `main()` tests registered in `smokeTestClasses`
-- [ ] PR targets `main` of **`origin`** (`YitWub/KimchiBaguette`) —
-      **never** the shared course repository (`fork`)
+- [ ] PR targets `main` of **`origin`** (`Littlecocoa/KimchiBaguette2`) —
+      **never** the shared course repository
 - [ ] Approved by at least one other team member, then **Squash and Merge**,
       then delete the branch

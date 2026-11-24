@@ -2,8 +2,8 @@
 
 > **Revised 2026-11-23.** This revision relaxes the rules we were enforcing
 > earlier and adds the `KAN-<n>` ticket key requirement. It applies to our team's
-> own fork only. Contributions to the shared course repository follow the course
-> maintainers' rules, not ours.
+> own repository only. Contributions to the shared course repository follow the
+> course maintainers' rules, not ours.
 
 ## 1. The short version
 
@@ -27,11 +27,14 @@ Five rules carry the whole process. Everything after this section is detail.
 
 ### Repositories
 
-- `origin` — [`YitWub/KimchiBaguette`](https://github.com/YitWub/KimchiBaguette),
-  our fork. **Every rule here applies to this repository.** All our PRs target its `main`.
-- `fork` — [`oh-gnues/Invaders-SDP-24592`](https://github.com/oh-gnues/Invaders-SDP-24592),
-  the shared course repository. We pull from it to stay in sync.
-  **Never open a PR against it** — only the collaborator does that.
+- `origin` — [`Littlecocoa/KimchiBaguette2`](https://github.com/Littlecocoa/KimchiBaguette2),
+  the repository we work in and the only remote configured. **Every rule here
+  applies to it.** All our PRs target its `main`.
+- The shared course repository,
+  [`oh-gnues/Invaders-SDP-24592`](https://github.com/oh-gnues/Invaders-SDP-24592),
+  is **not** configured as a remote here, and `origin` is not a fork of it, so
+  there is nothing to pull from or sync against today. **Never open a PR against
+  the course repository** — only the collaborator does that.
 
 ## 2. Ticket keys — `KAN-<n>` (required)
 
@@ -147,7 +150,7 @@ what you changed and that you ran it.
 
 - **Direct pushes to `main`.** This one does not get relaxed. With no CI, a broken
   `main` blocks everyone and nothing catches it but a person running the game.
-- **PRs against the shared course repository** (`fork`).
+- **PRs against the shared course repository** (`oh-gnues/Invaders-SDP-24592`).
 
 ## 5. Merging
 
@@ -160,8 +163,12 @@ reached `main` and the PR may be reopened.
 ### Exception: upstream sync PRs use a merge commit
 
 > **This exception is not relaxed. Do not squash a sync PR.**
+>
+> It is dormant right now: `origin` has no course-repository remote and is not a
+> fork of one, so no sync PR can be opened until someone adds that remote. Keep
+> the rule anyway — the history below is what it cost us to learn.
 
-A PR whose purpose is to merge the shared course repository (`fork`) into our
+A PR whose purpose is to merge the shared course repository into our
 `main` is merged with **"Create a merge commit"**, never squashed. A squash keeps
 only the first parent, so the upstream commit stops being an ancestor of `main`;
 once that ancestry is gone, git picks a merge base from before the sync and every
