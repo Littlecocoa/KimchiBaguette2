@@ -80,6 +80,7 @@ public class Cooldown {
             return System.currentTimeMillis();
         return GameClock.now();
     }
+
     /**
      * Checks if the cooldown is finished.
      *
@@ -87,7 +88,7 @@ public class Cooldown {
      */
 	public final boolean checkFinished() {
 		if ((this.time == 0)
-				|| this.time + this.duration <  now())
+				|| this.time + this.duration < now())
 			return true;
 		return false;
 	}
