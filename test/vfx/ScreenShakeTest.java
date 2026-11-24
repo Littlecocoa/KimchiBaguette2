@@ -1,5 +1,6 @@
 package vfx;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -11,6 +12,16 @@ class ScreenShakeTest {
 
     @BeforeEach
     void startStill() {
+        ScreenShake.reset();
+        ScreenShake.setIntensity(1.0);
+    }
+
+    /**
+     * ScreenShake is static and Gradle runs every test class in one JVM, so
+     * leave it still and at full intensity for whatever runs next.
+     */
+    @AfterEach
+    void leaveStill() {
         ScreenShake.reset();
         ScreenShake.setIntensity(1.0);
     }
