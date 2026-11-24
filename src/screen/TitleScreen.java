@@ -39,7 +39,7 @@ public class TitleScreen extends Screen {
 
         // Defaults to play.
         this.returnCode = 2;
-        this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
+        this.selectionCooldown = Core.getMenuCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
 
         AudioManager.playBGM("audio/bgm/music_menu.wav");

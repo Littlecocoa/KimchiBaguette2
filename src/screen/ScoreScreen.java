@@ -105,7 +105,7 @@ public class ScoreScreen extends Screen {
 		this.isNewRecord = false;
 		this.name = "AAA".toCharArray();
 		this.nameCharSelected = 0;
-		this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
+		this.selectionCooldown = Core.getMenuCooldown(SELECTION_TIME);
 		this.selectionCooldown.reset();
 
 		try {

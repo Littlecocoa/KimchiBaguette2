@@ -64,7 +64,7 @@ public class AudioControlScreen extends Screen {
 
 		// Returns to the main menu when closed.
 		this.returnCode = 4;
-		this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
+		this.selectionCooldown = Core.getMenuCooldown(SELECTION_TIME);
 		this.selectionCooldown.reset();
 
 		// Defaults to the BGM volume.

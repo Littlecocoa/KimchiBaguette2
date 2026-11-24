@@ -2,6 +2,7 @@ package entity;
 
 import java.util.ArrayList;
 import java.util.List;
+import engine.GameClock;
 
 /**
  * Manages the player's discrete lives and damage processing. The current game
@@ -403,14 +404,12 @@ public class PlayerStatus {
 
 	/**
 	 * Reads the clock the shield is measured against. Tests override this to
-	 * reach the expiry boundary without waiting. A pause feature would also
-	 * hook in here, since the wall clock keeps running while the game is
-	 * paused.
+	 * reach the expiry boundary without waiting. Reads GameClock so the shield freezes while the game is paused.
 	 *
 	 * @return Current time in milliseconds.
 	 */
 	long currentTimeMillis() {
-		return System.currentTimeMillis();
+		return GameClock.now();
 	}
 
 	/** Ends an active shield immediately, if there is one. */
