@@ -17,7 +17,7 @@ public class GameModeScreen extends Screen { // Implementation of the game mode 
         super(width, height, fps);
         this.selected = 0; // Se positionne par défaut sur le premier mode
         this.returnCode = 1; // Par défaut : retour au menu principal
-        this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
+        this.selectionCooldown = Core.getMenuCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
     }
 

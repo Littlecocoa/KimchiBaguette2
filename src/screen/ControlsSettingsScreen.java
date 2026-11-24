@@ -30,7 +30,7 @@ public class ControlsSettingsScreen extends Screen {
             final int fps) {
         super(width, height, fps);
         this.returnCode = 4;
-        this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
+        this.selectionCooldown = Core.getMenuCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
         this.selectedOption = LEFT_OPTION;
         this.waitingForKey = false;
