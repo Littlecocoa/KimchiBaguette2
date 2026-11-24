@@ -10,6 +10,7 @@ import entity.ShipType;
 import entity.item.ItemManager;
 import entity.item.ShieldItem;
 import event.GameplayEventListener;
+import java.awt.Graphics;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.awt.image.BufferedImage;
@@ -476,8 +477,21 @@ public final class FallingObstacleIntegrationTest {
 	private static BufferedImage copyBackBuffer(final GameScreen game)
 			throws Exception {
 		Object manager = read(game, "drawManager");
-		return (BufferedImage) field(manager.getClass(), "backBuffer")
-				.get(null);
+		BufferedImage live = (BufferedImage) field(manager.getClass(),
+				"backBuffer").get(null);
+		// DrawManager keeps one back buffer and reuses it, so the pixels have
+		// to be taken out of it before the next frame overwrites them. This
+		// used to return the live image and happened to work only because a
+		// fresh one was allocated every frame.
+		BufferedImage snapshot = new BufferedImage(live.getWidth(),
+				live.getHeight(), live.getType());
+		Graphics graphics = snapshot.getGraphics();
+		try {
+			graphics.drawImage(live, 0, 0, null);
+		} finally {
+			graphics.dispose();
+		}
+		return snapshot;
 	}
 
 	private static int countSlowEvents(
