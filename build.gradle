@@ -215,6 +215,17 @@ tasks.register('smokeTest') {
     dependsOn tasks.named('verifyTestRegistration')
 }
 
+// Needs a display, so it stays out of check. See docs/Display_Scaling_Controls.md.
+tasks.register('displayScalingDemo', JavaExec) {
+    group = 'verification'
+    description = 'Drives a window through every scale and fullscreen, checking the pointer.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'engine.DisplayScalingDemo'
+    enableAssertions = true
+    systemProperty 'file.encoding', 'UTF-8'
+}
+
 tasks.register('testRecords') {
     group = 'verification'
     description = 'Runs the records, gameplay integration, and wave regression checks.'

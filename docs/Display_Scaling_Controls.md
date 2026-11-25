@@ -58,14 +58,31 @@ and reads as `-1`, the same as a pointer that has left the window.
 The shake offset is deliberately left out of that: it moves the image only, and
 including it would make every menu's hover jitter with the screen.
 
-## Checking it by hand
+## Checking it
 
-`engine.DisplayConfigTest` covers the settings and the pointer arithmetic, but
-the window itself needs a person:
+`engine.DisplayConfigTest` runs with `check` and covers the settings and the
+pointer arithmetic. The window itself cannot be checked headless, so there is
+a second one that needs a display:
 
-1. Run the game. Press F10 three times, F11 twice.
-2. At each stop, hover the title menu entries and check the highlight follows
-   the pointer, including near the edges of the image.
-3. In fullscreen, hover the black border and check nothing highlights.
-4. Check the keyboard still works after each change — the window has to keep
-   the focus across a resize.
+```sh
+./gradlew displayScalingDemo
+```
+
+It opens a window a quarter of the game's size — on a laptop screen the game
+at 2x is taller than the desktop, so a full-size window would only ever be
+shown at 1x and the scaling would go unexercised — and walks it through 1x,
+2x, 3x, fullscreen and back, checking at each stop that the content area is
+exactly the logical size times the scale, that a pointer aimed at a menu entry
+reads back as that entry, and that a pointer on the letterbox reads as off the
+image. Keep the mouse off the window while it runs: a real pointer over the
+window reports its own position over the top of the one being tested. For the
+same reason it does not check the pointer in fullscreen, where the window
+covers the screen and the real pointer is always on it.
+
+Three things only a person can check, in the game itself:
+
+1. Press F10 and F11, and confirm the keyboard still works afterwards. The
+   window has to keep the focus across a resize.
+2. Hover the menus at each scale and watch the highlight follow the pointer.
+3. In fullscreen, hover a menu entry and then the black border, and check the
+   highlight follows the first and not the second.
