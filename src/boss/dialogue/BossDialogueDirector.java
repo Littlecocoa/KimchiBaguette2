@@ -8,8 +8,11 @@ import boss.BossEventListener;
  * exposes the line the renderer should draw, so neither the boss code nor the
  * renderer needs to know about the other.
  *
- * Contract only. The line table, the queue and the timing rules are filled in
- * by the boss dialogue task (KAN-18, KAN-19, KAN-20); {@link #getActiveLine()}
+ * Contract only. {@link BossDialogue} supplies the line table and
+ * {@link BossDialogueEventFilter} supplies event filtering and phase triggers.
+ * The queue and timing task (KAN-20) should own one filter, pass events to
+ * {@link BossDialogueEventFilter#filter(BossEvent)}, and queue only non-null
+ * triggers using the event's boss type. {@link #getActiveLine()}
  * returns {@code null} for now, which the renderer already treats as "draw
  * nothing".
  */
