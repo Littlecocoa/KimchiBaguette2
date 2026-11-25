@@ -114,6 +114,7 @@ def smokeTestClasses = [
     'engine.BossSpeechBubbleTest',
     'engine.CooldownVarianceTest',
     'engine.CoreDifficultySettingsTest',
+    'engine.DisplayConfigTest',
     'engine.IntegerScaleTest',
     'entity.BossDefeatTest',
     'entity.BossPhaseTest',
