@@ -1621,9 +1621,19 @@ public final class DrawManager {
                 } while (strategy.contentsRestored());
                 strategy.show();
             } while (strategy.contentsLost());
+        } catch (IllegalStateException e) {
+            // The window changed shape underneath us and took its buffers
+            // with it. Dropping one frame is better than taking the game
+            // down, and the next frame builds a new strategy.
+            logger.fine("Lost the buffers while presenting: " + e);
         } finally {
             backBufferGraphics.dispose();
         }
+
+        // Between frames is the only safe moment to resize the window or drop
+        // its decoration, and this is the thread that draws, so the frame
+        // waits to be asked rather than acting on the key press itself.
+        frame.applyPendingDisplayChange();
     }
 
     /**
@@ -1673,13 +1683,18 @@ public final class DrawManager {
                 screen.getHeight());
         int scaledWidth = screen.getWidth() * scale;
         int scaledHeight = screen.getHeight() * scale;
+        int marginX = letterbox(areaWidth, scaledWidth);
+        int marginY = letterbox(areaHeight, scaledHeight);
+
+        // Where the image landed, so that a pointer position can be read back
+        // against it. Without the shake, which moves the image only.
+        DisplayConfig.setViewport(scale, marginX, marginY, screen.getWidth(),
+                screen.getHeight());
 
         // The shake is measured in logical pixels, so it has to grow with
         // the image or it would feel weaker the more we scale up.
-        int originX = insets.left + letterbox(areaWidth, scaledWidth)
-                + shakeX * scale;
-        int originY = insets.top + letterbox(areaHeight, scaledHeight)
-                + shakeY * scale;
+        int originX = insets.left + marginX + shakeX * scale;
+        int originY = insets.top + marginY + shakeY * scale;
 
         // Clipped so that a shake offset cannot smear over the window border.
         drawGraphics.setClip(insets.left, insets.top, areaWidth, areaHeight);
