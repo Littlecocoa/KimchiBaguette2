@@ -117,8 +117,9 @@ class EndlessRewardIntegrationTest {
             } finally {
                 key(false);
             }
-            assertTrue(current.isAbandoned());
-            assertEquals(Boolean.FALSE, get(current, "isRunning"));
+			assertTrue(current.isPaused());
+			assertFalse(current.isAbandoned());
+			assertEquals(Boolean.TRUE, get(current, "isRunning"));
         });
         assertEquals(201, files.loadPlayerAssets(save).getBalance());
         assertEquals(0, endless.getPendingCurrency());
