@@ -146,6 +146,8 @@ public class GameScreen extends Screen {
 	private int bossSpeechX;
 	/** Last top edge of the boss, where its speech bubble points. */
 	private int bossSpeechY;
+	/** True once the boss has been on screen, so the bubble has a place. */
+	private boolean bossSpeechSeen;
 	/** Set of all bullets fired by the boss. */
 	private Set<BossBullet> bossBullets;
 
@@ -929,13 +931,15 @@ public class GameScreen extends Screen {
         drawManager.drawFloatingScores(floatingScoreHud, this);
 
 		// Boss speech. A defeated boss leaves the screen before its line ends,
-		// so the bubble stays at the last place the boss was seen.
+		// so the bubble stays at the last place the boss was seen. This only
+		// relies on the boss shown here, not on BossManager keeping it.
 		if (boss != null) {
 			this.bossSpeechX = boss.getPositionX() + boss.getWidth() / 2;
 			this.bossSpeechY = boss.getPositionY();
+			this.bossSpeechSeen = true;
 		}
 		String bossLine = this.dialogueDirector.getActiveLine();
-		if (bossLine != null && this.bossManager.getBoss() != null)
+		if (bossLine != null && this.bossSpeechSeen)
 			drawManager.drawBossSpeech(this, bossLine, this.bossSpeechX,
 					this.bossSpeechY);
 
