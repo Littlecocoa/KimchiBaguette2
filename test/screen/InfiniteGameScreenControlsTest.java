@@ -86,7 +86,7 @@ public final class InfiniteGameScreenControlsTest {
         } finally {
             key(quitting, KeyEvent.VK_ESCAPE, false);
         }
-        check(!quitting.isRunning, "Escape no longer exits the run");
+		check(quitting.isPaused() && quitting.isRunning, "Escape pauses the run instead of exiting");
         System.out.println("Infinite Mode controls checks passed.");
     }
 

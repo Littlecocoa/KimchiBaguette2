@@ -9,18 +9,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.Random;
 import campaign.CampaignStageData;
-import engine.DifficultyAdjustWhilePlaying;
-import entity.item.ChameleonHull;
-import entity.item.ItemManager;
-import entity.item.ShieldItem;
 import engine.Cooldown;
 import engine.CampaignUpgrades;
 import engine.Core;
+import engine.GameClock;
 import engine.GameSettings;
 import engine.GameState;
-import engine.GameplayConfig;
 import engine.ControlsConfig;
+import engine.DifficultyAdjustWhilePlaying;
+import engine.GameplayConfig;
 import engine.LevelGameplayAdapter;
+import entity.item.ChameleonHull;
+import entity.item.ItemManager;
+import entity.item.ShieldItem;
 import level.LevelDefinition;
 import level.WaveDefinition;
 import entity.Bullet;
@@ -551,6 +552,7 @@ public class GameScreen extends Screen {
         this.gameStartTime = System.currentTimeMillis();
         this.inputDelay = Core.getCooldown(INPUT_DELAY);
         this.inputDelay.reset();
+		this.paused = false;
 
 		if (this.bonusLife) {
 			AudioManager.playSFX("audio/sfx/bonus_life.wav");
@@ -595,6 +597,28 @@ public class GameScreen extends Screen {
 	 */
 	protected final void update() {
 		super.update();
+		if (this.inputDelay.checkFinished() && !this.levelFinished && isPauseKeyJustPressed()) {
+			togglePause();
+			if (isPaused()) {
+				GameClock.pause();
+				AudioManager.pauseBGM();
+				if (this.runSession != null) {
+					this.runSession.stopActiveSegment(System.nanoTime());
+				}
+			} else {
+				GameClock.resume();
+				AudioManager.resumeBGM();
+				ScreenShake.reset();
+				if (this.runSession != null) {
+					this.runSession.startActiveSegment(System.nanoTime());
+				}
+			}
+		}
+
+		if (isPaused()) {
+			draw();
+			return;
+		}
 		if (this.recordsService != null) {
 			long now = System.currentTimeMillis();
 			if (this.visibleAchievement == null || now >= this.achievementNoticeUntil) {
@@ -965,7 +989,10 @@ public class GameScreen extends Screen {
 
         if (this.visibleAchievement != null)
             drawManager.drawAchievementNotice(this, this.visibleAchievement);
-        drawManager.completeDrawing(this);
+		if (isPaused()) {
+			drawManager.drawPaused(this);
+		}
+		drawManager.completeDrawing(this);
     }
 
     /**
