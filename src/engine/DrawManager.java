@@ -138,6 +138,10 @@ public final class DrawManager {
      * pixel-exact and one that is short of the next scale gets filled.
      */
     private static final double FILL_THRESHOLD = 0.9;
+    /** Content width the buffer strategy was built for. */
+    private static int strategyWidth;
+    /** Content height the buffer strategy was built for. */
+    private static int strategyHeight;
     /** Normal sized font. */
     private static Font fontRegular;
     /** Normal sized font properties. */
@@ -1657,9 +1661,21 @@ public final class DrawManager {
         if (frame == null)
             return null;
 
+        int areaWidth = frame.getContentPane().getWidth();
+        int areaHeight = frame.getContentPane().getHeight();
+
         BufferStrategy strategy = frame.getBufferStrategy();
-        if (strategy != null)
+        if (strategy != null && areaWidth == strategyWidth
+                && areaHeight == strategyHeight)
             return strategy;
+
+        if (strategy != null)
+            // The buffers are the size the window was when they were made, so
+            // a window resized by any route — maximize, the green button, a
+            // dragged corner, none of which come through the display settings
+            // — leaves them showing the old frame in a corner of the new one.
+            // They have to be built again at the size it is now.
+            strategy.dispose();
 
         try {
             // We paint every frame ourselves, so Swing repainting on top of it
@@ -1670,6 +1686,8 @@ public final class DrawManager {
             // Frame not displayable yet. The next frame will try again.
             return null;
         }
+        strategyWidth = areaWidth;
+        strategyHeight = areaHeight;
         return frame.getBufferStrategy();
     }
 

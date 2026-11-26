@@ -80,6 +80,15 @@ public class Frame extends JFrame {
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		setTitle("Invaders");
 
+		// Nothing inside the window is painted by Swing: the frame is presented
+		// whole, every frame, through a buffer strategy. Left to itself Swing
+		// repaints the content pane on a resize and fills it with its own
+		// background, which lands on the very surface being flipped — on
+		// Windows that showed up as a pale frame around the image.
+		setIgnoreRepaint(true);
+		getRootPane().setIgnoreRepaint(true);
+		getContentPane().setIgnoreRepaint(true);
+
 		addKeyListener(Core.getInputManager());
 		// On the window rather than in a screen, so it works everywhere,
 		// including in the middle of a level.
