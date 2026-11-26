@@ -2,33 +2,50 @@
 
 Related tickets: KAN-32, KAN-33, KAN-35. Rendering half: KAN-34.
 
-The game draws in a fixed space of 448x520 logical pixels. The window is that
-size times a whole number, and fullscreen is the same image centred on the
-screen with the leftover space left black. Nothing in the game knows about any
-of this: screens still draw in 448x520 and read mouse positions in 448x520.
+The game draws in a fixed space of 448x520 logical pixels. Whatever size the
+window is, the image is drawn at the largest whole-number scale that fits it
+and centred, with the leftover space left black. Nothing in the game knows
+about any of this: screens still draw in 448x520 and read mouse positions in
+448x520.
 
-## Keys
+## How to make it bigger
 
-| Key | What it does |
+| What | What it does |
 | --- | --- |
+| **The window's own controls** | The green button on macOS, maximize on Windows, dragging a corner |
 | **F11** | Fills the screen, or goes back to a window |
 | **F9** | Steps the window through 1x, 2x, 3x and back to 1x, leaving fullscreen if it was on |
 
-Both work on every screen, including during a level, because they are on the
-window rather than in any one screen's update.
+The window is resizable, so the platform's own fullscreen is the first answer
+and needs nothing from us. The window cannot be dragged smaller than the game,
+which would crop it rather than scale it down.
 
-Not F10, which was the first choice: Windows reserves it for the window's own
-menu and takes it before Swing sees it, so pressing it opened the system menu
-and no further key reached the game.
+The keys work on every screen, including during a level, because they are on
+the window rather than in any one screen's update. Two things to know about
+them:
+
+- **On macOS the function keys belong to the system.** F11 is Show Desktop or
+  Mission Control depending on the version, and it never reaches the game. Use
+  `fn`+F11, or turn on "Use F1, F2, etc. keys as standard function keys" in
+  System Settings - Keyboard. The green button has none of this trouble, which
+  is why it is first in the table.
+- **Not F10**, which was the first choice for the scale key: Windows reserves
+  it for the window's own menu and takes it before Swing sees it, so pressing
+  it opened the system menu and no further key reached the game.
+
+Each applied change is logged (`Display: 2x window, content 896x1040`), so
+whether a key press arrived can be answered from the log rather than by
+watching the window.
 
 The scale and the fullscreen flag are stored with the other settings
 (`java.util.prefs`), so they survive a restart.
 
-## Why the keys sometimes appear to do nothing
+## Why the scale key sometimes appears to do nothing
 
 A window is only grown to a scale the desktop has room for. The window at 2x is
 896x1072 including the title bar, which does not fit on a 1512x982 laptop
 screen, so on that screen F9 keeps showing 1x whatever the setting says. The
+green button is the way to fill that screen. The
 setting is still remembered: plug in a larger screen and it will be used.
 
 Fullscreen has the same rule. The image is drawn at the largest whole-number
@@ -99,10 +116,13 @@ window reports its own position over the top of the one being tested. For the
 same reason it does not check the pointer in fullscreen, where the window
 covers the screen and the real pointer is always on it.
 
-Three things only a person can check, in the game itself:
+Four things only a person can check, in the game itself:
 
 1. Press F9 and F11, and confirm the keyboard still works afterwards. The
    window has to keep the focus across a resize.
 2. Hover the menus at each scale and watch the highlight follow the pointer.
 3. In fullscreen, hover a menu entry and then the black border, and check the
    highlight follows the first and not the second.
+4. Use the window's own fullscreen (the green button, maximize) and drag the
+   window to an odd size, and check the image stays centred and sharp and the
+   menus still answer the pointer.
