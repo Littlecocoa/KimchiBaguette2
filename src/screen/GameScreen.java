@@ -31,6 +31,7 @@ import boss.BossManager;
 import boss.BossSpawnRequest;
 import boss.BossStatus;
 import boss.LoggingBossEventListener;
+import boss.dialogue.BossDialogueDirector;
 import entity.BonusEnemyManager;
 import entity.Boss;
 import entity.BossBullet;
@@ -139,6 +140,15 @@ public class GameScreen extends Screen {
 	/** Boss of the level, its attacks, events and links to other systems.
 	 * The only source of truth for the boss. */
 	private BossManager bossManager;
+	/** Picks the line the boss is saying, from the boss events. */
+	private final BossDialogueDirector dialogueDirector =
+			new BossDialogueDirector();
+	/** Last horizontal center of the boss, where its speech bubble points. */
+	private int bossSpeechX;
+	/** Last top edge of the boss, where its speech bubble points. */
+	private int bossSpeechY;
+	/** True once the boss has been on screen, so the bubble has a place. */
+	private boolean bossSpeechSeen;
 	/** Set of all bullets fired by the boss. */
 	private Set<BossBullet> bossBullets;
 
@@ -519,6 +529,8 @@ public class GameScreen extends Screen {
 		// Logs boss events for debugging.
 		this.bossManager.getEventManager().addListener(
 				new LoggingBossEventListener());
+		// Boss lines shown in a speech bubble.
+		this.bossManager.getEventManager().addListener(this.dialogueDirector);
 		// Boss events also go onto the shared gameplay bus, so Sound,
 		// Currency and Records can subscribe to BossEvent.class there, and
 		// drive the effects, sounds and records handled on this screen.
@@ -941,6 +953,19 @@ public class GameScreen extends Screen {
                     this.twinCanonItem.getPositionY());
 
         drawManager.drawFloatingScores(floatingScoreHud, this);
+
+		// Boss speech. A defeated boss leaves the screen before its line ends,
+		// so the bubble stays at the last place the boss was seen. This only
+		// relies on the boss shown here, not on BossManager keeping it.
+		if (boss != null) {
+			this.bossSpeechX = boss.getPositionX() + boss.getWidth() / 2;
+			this.bossSpeechY = boss.getPositionY();
+			this.bossSpeechSeen = true;
+		}
+		String bossLine = this.dialogueDirector.getActiveLine();
+		if (bossLine != null && this.bossSpeechSeen)
+			drawManager.drawBossSpeech(this, bossLine, this.bossSpeechX,
+					this.bossSpeechY);
 
 		// Interface.
 		drawManager.drawScore(this, this.score);
