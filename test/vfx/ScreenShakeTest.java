@@ -1,5 +1,6 @@
 package vfx;
 
+import java.lang.reflect.Field;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -131,15 +132,15 @@ class ScreenShakeTest {
     void raiseToRepeatedInOneFrameDoesNotStack() {
         // Three kills in one frame while a small shake is still fading out.
         ScreenShake.add(0.2);
-        ScreenShake.raiseTo(0.40);
-        ScreenShake.raiseTo(0.40);
-        ScreenShake.raiseTo(0.40);
-        assertEquals(0.40, ScreenShake.getTrauma(), 1e-9);
+        ScreenShake.raiseTo(0.45);
+        ScreenShake.raiseTo(0.45);
+        ScreenShake.raiseTo(0.45);
+        assertEquals(0.45, ScreenShake.getTrauma(), 1e-9);
 
         ScreenShake.reset();
         for (int kill = 0; kill < 5; kill++)
-            ScreenShake.raiseTo(0.40);
-        assertEquals(0.40, ScreenShake.getTrauma(), 1e-9);
+            ScreenShake.raiseTo(0.45);
+        assertEquals(0.45, ScreenShake.getTrauma(), 1e-9);
     }
 
     @Test
@@ -171,14 +172,19 @@ class ScreenShakeTest {
     }
 
     @Test
-    void intensityScalesTheOffset() {
-        // Low (0.5) halves the range: at most 3 pixels.
+    void lowIntensityIsExactlyHalfOfNormalAtMaximumOffset()
+            throws Exception {
+        frameAt(1.0);
+        setDirection("directionX", 1.0);
+
+        ScreenShake.setIntensity(1.0);
+        assertEquals(6, ScreenShake.getOffsetX());
+
         ScreenShake.setIntensity(0.5);
-        for (int i = 0; i < SAMPLES; i++) {
-            frameAt(1.0);
-            assertTrue(Math.abs(ScreenShake.getOffsetX()) <= 3);
-            assertTrue(Math.abs(ScreenShake.getOffsetY()) <= 3);
-        }
+        assertEquals(3, ScreenShake.getOffsetX());
+
+        ScreenShake.setIntensity(0.0);
+        assertEquals(0, ScreenShake.getOffsetX());
     }
 
     @Test
@@ -208,5 +214,12 @@ class ScreenShakeTest {
         ScreenShake.add(1.0);
         ScreenShake.reset();
         assertEquals(0.5, ScreenShake.getIntensity());
+    }
+
+    private static void setDirection(final String fieldName,
+            final double value) throws Exception {
+        Field field = ScreenShake.class.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.setDouble(null, value);
     }
 }

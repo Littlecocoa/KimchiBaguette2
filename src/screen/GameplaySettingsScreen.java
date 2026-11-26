@@ -10,9 +10,10 @@ import engine.GameplayConfig;
 public class GameplaySettingsScreen extends Screen {
     private static final int DIFFICULTY_OPTION = 0;
     private static final int SCREEN_SHAKE_OPTION = 1;
-    private static final int OPTION_COUNT = 2;
+    private static final int CONFIRM_OPTION = 2;
+    private static final int OPTION_COUNT = 3;
     private static final int VALUE_COUNT = 3;
-    private static final int CONFIRM_OPTION = OPTION_COUNT * VALUE_COUNT;
+    private static final int CONFIRM_HIT_OPTION = CONFIRM_OPTION * VALUE_COUNT;
     private static final int SELECTION_TIME = 200;
 
     private static final double[] SCREEN_SHAKE_VALUES = {
@@ -57,12 +58,13 @@ public class GameplaySettingsScreen extends Screen {
                 selectedDifficulty, selectedScreenShake,
                 inputManager.getMouseX(), inputManager.getMouseY());
 
-        // Select a setting row when the mouse moves onto one of its values.
+        // Select the setting row or Confirm when the mouse moves over it.
         if (hoveredOption != lastHoveredOption) {
             lastHoveredOption = hoveredOption;
-            int hoveredSetting = getSettingIndex(hoveredOption);
-            if (hoveredSetting != -1 && hoveredSetting != selectedOption) {
-                selectedOption = hoveredSetting;
+            int hoveredSelection = getNavigationOption(hoveredOption);
+            if (hoveredSelection != -1
+                    && hoveredSelection != selectedOption) {
+                selectedOption = hoveredSelection;
                 AudioManager.playSFX("audio/sfx/menu_move.wav");
             }
         }
@@ -73,7 +75,7 @@ public class GameplaySettingsScreen extends Screen {
 
         if (newMouseClick && hoveredOption != -1
                 && inputDelay.checkFinished()) {
-            if (hoveredOption == CONFIRM_OPTION) {
+            if (hoveredOption == CONFIRM_HIT_OPTION) {
                 confirmSettings();
                 return;
             }
@@ -101,14 +103,10 @@ public class GameplaySettingsScreen extends Screen {
             AudioManager.playSFX("audio/sfx/menu_move.wav");
         } else if (inputManager.isKeyDown(KeyEvent.VK_LEFT)
                 || inputManager.isKeyDown(KeyEvent.VK_A)) {
-            changeSelectedValue(-1);
-            selectionCooldown.reset();
-            AudioManager.playSFX("audio/sfx/menu_move.wav");
+            changeSelectedValueIfPossible(-1);
         } else if (inputManager.isKeyDown(KeyEvent.VK_RIGHT)
                 || inputManager.isKeyDown(KeyEvent.VK_D)) {
-            changeSelectedValue(1);
-            selectionCooldown.reset();
-            AudioManager.playSFX("audio/sfx/menu_move.wav");
+            changeSelectedValueIfPossible(1);
         } else if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
             confirmSettings();
         } else if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
@@ -128,6 +126,15 @@ public class GameplaySettingsScreen extends Screen {
         setSelectedValue(selectedOption, newValue);
     }
 
+    private void changeSelectedValueIfPossible(final int amount) {
+        if (selectedOption == CONFIRM_OPTION) {
+            return;
+        }
+        changeSelectedValue(amount);
+        selectionCooldown.reset();
+        AudioManager.playSFX("audio/sfx/menu_move.wav");
+    }
+
     private void setSelectedValue(final int setting, final int value) {
         if (setting == DIFFICULTY_OPTION) {
             selectedDifficulty = value;
@@ -137,8 +144,15 @@ public class GameplaySettingsScreen extends Screen {
     }
 
     private static int getSettingIndex(final int option) {
-        return option < 0 || option >= CONFIRM_OPTION
+        return option < 0 || option >= CONFIRM_HIT_OPTION
                 ? -1 : option / VALUE_COUNT;
+    }
+
+    private static int getNavigationOption(final int option) {
+        if (option == CONFIRM_HIT_OPTION) {
+            return CONFIRM_OPTION;
+        }
+        return getSettingIndex(option);
     }
 
     private static int getScreenShakeOption(final double intensity) {
@@ -166,7 +180,7 @@ public class GameplaySettingsScreen extends Screen {
         drawManager.initDrawing(this);
         drawManager.drawGameplaySettings(this, selectedOption,
                 selectedDifficulty, selectedScreenShake,
-                lastHoveredOption == CONFIRM_OPTION);
+                selectedOption == CONFIRM_OPTION);
         drawManager.completeDrawing(this);
     }
 }

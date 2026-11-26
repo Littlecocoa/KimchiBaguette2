@@ -19,16 +19,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class GameplaySettingsScreenTest {
+    private static final String DIFFICULTY_KEY = "difficulty";
+    private static final String SCREEN_SHAKE_KEY = "screenShakeIntensity";
+
     private final Canvas inputSource = new Canvas();
-    private int previousDifficulty;
-    private double previousScreenShake;
+    private String previousDifficultyPreference;
+    private String previousScreenShakePreference;
     private boolean previousMute;
     private GameplaySettingsScreen screen;
 
     @BeforeEach
     void setUp() {
-        previousDifficulty = GameplayConfig.getDifficulty();
-        previousScreenShake = GameplayConfig.getScreenShakeIntensity();
+        Preferences preferences = gameplayPreferences();
+        previousDifficultyPreference = preferences.get(DIFFICULTY_KEY, null);
+        previousScreenShakePreference = preferences.get(SCREEN_SHAKE_KEY, null);
         previousMute = AudioManager.isMuted();
         AudioManager.setMuted(true);
         releaseInput();
@@ -41,8 +45,8 @@ class GameplaySettingsScreenTest {
     @AfterEach
     void cleanUp() {
         releaseInput();
-        GameplayConfig.setDifficulty(previousDifficulty);
-        GameplayConfig.setScreenShakeIntensity(previousScreenShake);
+        restorePreference(DIFFICULTY_KEY, previousDifficultyPreference);
+        restorePreference(SCREEN_SHAKE_KEY, previousScreenShakePreference);
         AudioManager.setMuted(previousMute);
     }
 
@@ -65,6 +69,49 @@ class GameplaySettingsScreenTest {
     }
 
     @Test
+    void keyboardCanSelectConfirmAndSaveBothSettings() {
+        tap(KeyEvent.VK_RIGHT);
+        tap(KeyEvent.VK_S);
+        tap(KeyEvent.VK_A);
+        tap(KeyEvent.VK_DOWN);
+
+        assertEquals(2, selectedOption());
+        assertTrue(screen.isRunning);
+
+        tap(KeyEvent.VK_SPACE);
+
+        assertFalse(screen.isRunning);
+        assertEquals(GameplayConfig.HARD, GameplayConfig.getDifficulty());
+        assertEquals(GameplayConfig.SCREEN_SHAKE_LOW,
+                GameplayConfig.getScreenShakeIntensity());
+    }
+
+    @Test
+    void horizontalKeysDoNotChangeValuesWhenConfirmIsSelected() {
+        tap(KeyEvent.VK_W);
+        assertEquals(2, selectedOption());
+
+        tap(KeyEvent.VK_LEFT);
+        assertEquals(GameplayConfig.NORMAL, selectedDifficulty());
+        assertEquals(2, selectedScreenShake());
+
+        tap(KeyEvent.VK_D);
+        assertEquals(GameplayConfig.NORMAL, selectedDifficulty());
+        assertEquals(2, selectedScreenShake());
+        assertTrue(screen.isRunning);
+    }
+
+    @Test
+    void mouseAndKeyboardShareOneNavigationSelection() {
+        Point confirm = findOption(6, GameplayConfig.NORMAL, 2);
+        moveMouse(confirm);
+        assertEquals(2, selectedOption());
+
+        tap(KeyEvent.VK_UP);
+        assertEquals(1, selectedOption());
+    }
+
+    @Test
     void escapeDiscardsKeyboardChanges() {
         tap(KeyEvent.VK_LEFT);
         tap(KeyEvent.VK_DOWN);
@@ -75,6 +122,19 @@ class GameplaySettingsScreenTest {
         assertEquals(GameplayConfig.NORMAL, GameplayConfig.getDifficulty());
         assertEquals(GameplayConfig.SCREEN_SHAKE_NORMAL,
                 GameplayConfig.getScreenShakeIntensity());
+    }
+
+    @Test
+    void savedSettingsAreLoadedWhenTheScreenIsReopened() {
+        tap(KeyEvent.VK_RIGHT);
+        tap(KeyEvent.VK_DOWN);
+        tap(KeyEvent.VK_LEFT);
+        tap(KeyEvent.VK_SPACE);
+
+        openScreen();
+
+        assertEquals(GameplayConfig.HARD, selectedDifficulty());
+        assertEquals(1, selectedScreenShake());
     }
 
     @Test
@@ -148,8 +208,7 @@ class GameplaySettingsScreenTest {
 
     @Test
     void screenShakeDefaultsToNormalWhenNoPreferenceExists() {
-        Preferences.userNodeForPackage(GameplayConfig.class)
-                .remove("screenShakeIntensity");
+        gameplayPreferences().remove(SCREEN_SHAKE_KEY);
 
         assertEquals(GameplayConfig.SCREEN_SHAKE_NORMAL,
                 GameplayConfig.getScreenShakeIntensity());
@@ -201,6 +260,40 @@ class GameplaySettingsScreenTest {
         var field = DrawManager.class.getDeclaredField("fontRegularMetrics");
         field.setAccessible(true);
         return (FontMetrics) field.get(null);
+    }
+
+    private int selectedOption() {
+        return intField("selectedOption");
+    }
+
+    private int selectedDifficulty() {
+        return intField("selectedDifficulty");
+    }
+
+    private int selectedScreenShake() {
+        return intField("selectedScreenShake");
+    }
+
+    private int intField(final String name) {
+        try {
+            var field = GameplaySettingsScreen.class.getDeclaredField(name);
+            field.setAccessible(true);
+            return field.getInt(screen);
+        } catch (ReflectiveOperationException exception) {
+            throw new AssertionError(exception);
+        }
+    }
+
+    private Preferences gameplayPreferences() {
+        return Preferences.userNodeForPackage(GameplayConfig.class);
+    }
+
+    private void restorePreference(final String key, final String value) {
+        if (value == null) {
+            gameplayPreferences().remove(key);
+        } else {
+            gameplayPreferences().put(key, value);
+        }
     }
 
     private void moveMouse(final Point point) {
