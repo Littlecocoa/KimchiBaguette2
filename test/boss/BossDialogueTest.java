@@ -108,7 +108,7 @@ public static void main(String[] args)
 
     private static void testDialogueTiming(BossType type)
         throws InterruptedException {
-    
+
         Boss boss = new Boss(100, 78, type);
         BossDialogue dialogue = new BossDialogue();
 
