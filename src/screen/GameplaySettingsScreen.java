@@ -8,11 +8,22 @@ import engine.Core;
 import engine.GameplayConfig;
 
 public class GameplaySettingsScreen extends Screen {
-    private static final int OPTION_COUNT = 3;
+    private static final int DIFFICULTY_OPTION = 0;
+    private static final int SCREEN_SHAKE_OPTION = 1;
+    private static final int OPTION_COUNT = 2;
+    private static final int VALUE_COUNT = 3;
     private static final int SELECTION_TIME = 200;
+
+    private static final double[] SCREEN_SHAKE_VALUES = {
+            GameplayConfig.SCREEN_SHAKE_OFF,
+            GameplayConfig.SCREEN_SHAKE_LOW,
+            GameplayConfig.SCREEN_SHAKE_NORMAL
+    };
 
     private final Cooldown selectionCooldown;
     private int selectedOption;
+    private int selectedDifficulty;
+    private int selectedScreenShake;
     /** Option under the mouse on the last frame, -1 if none. */
     private int lastHoveredOption = -1;
     /** Starts true so a click held from the previous screen is ignored. */
@@ -22,7 +33,10 @@ public class GameplaySettingsScreen extends Screen {
             final int fps) {
         super(width, height, fps);
         this.returnCode = 4;
-        this.selectedOption = GameplayConfig.getDifficulty();
+        this.selectedOption = DIFFICULTY_OPTION;
+        this.selectedDifficulty = GameplayConfig.getDifficulty();
+        this.selectedScreenShake = getScreenShakeOption(
+                GameplayConfig.getScreenShakeIntensity());
         this.selectionCooldown = Core.getMenuCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
     }
@@ -41,11 +55,12 @@ public class GameplaySettingsScreen extends Screen {
         int hoveredOption = drawManager.getGameplaySettingsOptionAt(this,
                 inputManager.getMouseX(), inputManager.getMouseY());
 
-        // Select an option when the mouse moves onto it.
+        // Select a setting row when the mouse moves onto one of its values.
         if (hoveredOption != lastHoveredOption) {
             lastHoveredOption = hoveredOption;
-            if (hoveredOption != -1 && hoveredOption != selectedOption) {
-                selectedOption = hoveredOption;
+            int hoveredSetting = getSettingIndex(hoveredOption);
+            if (hoveredSetting != -1 && hoveredSetting != selectedOption) {
+                selectedOption = hoveredSetting;
                 AudioManager.playSFX("audio/sfx/menu_move.wav");
             }
         }
@@ -56,8 +71,9 @@ public class GameplaySettingsScreen extends Screen {
 
         if (newMouseClick && hoveredOption != -1
                 && inputDelay.checkFinished()) {
-            selectedOption = hoveredOption;
-            confirmDifficulty();
+            selectedOption = getSettingIndex(hoveredOption);
+            setSelectedValue(selectedOption, hoveredOption % VALUE_COUNT);
+            AudioManager.playSFX("audio/sfx/menu_move.wav");
             return;
         }
 
@@ -77,8 +93,18 @@ public class GameplaySettingsScreen extends Screen {
             selectedOption = (selectedOption + 1) % OPTION_COUNT;
             selectionCooldown.reset();
             AudioManager.playSFX("audio/sfx/menu_move.wav");
+        } else if (inputManager.isKeyDown(KeyEvent.VK_LEFT)
+                || inputManager.isKeyDown(KeyEvent.VK_A)) {
+            changeSelectedValue(-1);
+            selectionCooldown.reset();
+            AudioManager.playSFX("audio/sfx/menu_move.wav");
+        } else if (inputManager.isKeyDown(KeyEvent.VK_RIGHT)
+                || inputManager.isKeyDown(KeyEvent.VK_D)) {
+            changeSelectedValue(1);
+            selectionCooldown.reset();
+            AudioManager.playSFX("audio/sfx/menu_move.wav");
         } else if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
-            confirmDifficulty();
+            confirmSettings();
         } else if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
             AudioManager.playSFX("audio/sfx/menu_back.wav");
             returnCode = 4;
@@ -87,10 +113,43 @@ public class GameplaySettingsScreen extends Screen {
     }
 
     /**
-     * Saves the selected difficulty and returns to the settings menu.
+     * Changes the value of the selected setting, wrapping at either end.
      */
-    private void confirmDifficulty() {
-        GameplayConfig.setDifficulty(selectedOption);
+    private void changeSelectedValue(final int amount) {
+        int currentValue = selectedOption == DIFFICULTY_OPTION
+                ? selectedDifficulty : selectedScreenShake;
+        int newValue = (currentValue + amount + VALUE_COUNT) % VALUE_COUNT;
+        setSelectedValue(selectedOption, newValue);
+    }
+
+    private void setSelectedValue(final int setting, final int value) {
+        if (setting == DIFFICULTY_OPTION) {
+            selectedDifficulty = value;
+        } else if (setting == SCREEN_SHAKE_OPTION) {
+            selectedScreenShake = value;
+        }
+    }
+
+    private static int getSettingIndex(final int option) {
+        return option == -1 ? -1 : option / VALUE_COUNT;
+    }
+
+    private static int getScreenShakeOption(final double intensity) {
+        for (int i = 0; i < SCREEN_SHAKE_VALUES.length; i++) {
+            if (SCREEN_SHAKE_VALUES[i] == intensity) {
+                return i;
+            }
+        }
+        return SCREEN_SHAKE_VALUES.length - 1;
+    }
+
+    /**
+     * Saves both gameplay settings and returns to the settings menu.
+     */
+    private void confirmSettings() {
+        GameplayConfig.setDifficulty(selectedDifficulty);
+        GameplayConfig.setScreenShakeIntensity(
+                SCREEN_SHAKE_VALUES[selectedScreenShake]);
         AudioManager.playSFX("audio/sfx/menu_back.wav");
         returnCode = 4;
         isRunning = false;
@@ -98,7 +157,8 @@ public class GameplaySettingsScreen extends Screen {
 
     private void draw() {
         drawManager.initDrawing(this);
-        drawManager.drawGameplaySettings(this, selectedOption);
+        drawManager.drawGameplaySettings(this, selectedOption,
+                selectedDifficulty, selectedScreenShake);
         drawManager.completeDrawing(this);
     }
 }
