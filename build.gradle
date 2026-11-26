@@ -226,6 +226,17 @@ tasks.register('displayScalingDemo', JavaExec) {
     systemProperty 'file.encoding', 'UTF-8'
 }
 
+// Needs a display, so it stays out of check. KAN-53, PRD §7 step 4.
+tasks.register('bossBattleIntegrationDemo', JavaExec) {
+    group = 'verification'
+    description = 'Runs one boss fight with scaling, shake and dialogue all on.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'screen.BossBattleIntegrationDemo'
+    enableAssertions = true
+    systemProperty 'file.encoding', 'UTF-8'
+}
+
 tasks.register('testRecords') {
     group = 'verification'
     description = 'Runs the records, gameplay integration, and wave regression checks.'
