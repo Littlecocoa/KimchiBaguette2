@@ -788,7 +788,7 @@ public class GameScreen extends Screen {
 			boolean annihilatorWasFiring = this.annihilator.isFiring();
 			this.annihilator.update();
 			if (!annihilatorWasFiring && this.annihilator.isFiring())
-				ScreenShake.add(0.52);
+				ScreenShake.add(0.58);
             this.enemyShipFormation.update();
 			this.enemyShipFormation.shoot(this.bullets, this.ship);
         }
@@ -1156,7 +1156,7 @@ public class GameScreen extends Screen {
                                         + enemyShip.getWidth() / 2,
                                 enemyShip.getPositionY()
                                         + enemyShip.getHeight() / 2);
-						ScreenShake.raiseTo(0.40);
+						ScreenShake.raiseTo(0.45);
                         tryDropChameleonHull(enemyShip);
                         tryDropAnnihilator(enemyShip);
                         tryDropGrenade(enemyShip);
@@ -1193,7 +1193,7 @@ public class GameScreen extends Screen {
                     this.particleSystem.spawnEnemyExplosion(
                             bonusShip.getPositionX() + bonusShip.getWidth() / 2,
                             bonusShip.getPositionY() + bonusShip.getHeight() / 2);
-					ScreenShake.raiseTo(0.40);
+					ScreenShake.raiseTo(0.45);
                     tryDropChameleonHull(bonusShip);
                     tryDropHyperfire(bonusShip);
                     recyclable.add(bullet);
@@ -1537,11 +1537,11 @@ public class GameScreen extends Screen {
 		switch (event.getType()) {
 		case SPAWNED:
 			AudioManager.playSFX(BOSS_SPAWN_SOUND);
-			ScreenShake.add(0.70);
+			ScreenShake.add(0.75);
 			break;
 		case PHASE_CHANGED:
 			AudioManager.playSFX(BOSS_PHASE_SOUND);
-			ScreenShake.add(0.60);
+			ScreenShake.add(0.65);
 			break;
 		case ATTACK:
 			if (event.isSpecial())
@@ -1901,7 +1901,7 @@ public class GameScreen extends Screen {
                 this.fragments.addAll(GrenadeFragment.explode(
                         grenade.getCenterX(), grenade.getCenterY()));
 				AudioManager.playSFX("audio/sfx/item_grenade_explode.wav");
-				ScreenShake.raiseTo(0.52);
+				ScreenShake.raiseTo(0.58);
             }
         }
         this.grenades.removeAll(exploded);
@@ -1927,7 +1927,7 @@ public class GameScreen extends Screen {
                                         + enemyShip.getWidth() / 2,
                                 enemyShip.getPositionY()
                                         + enemyShip.getHeight() / 2);
-						ScreenShake.raiseTo(0.40);
+						ScreenShake.raiseTo(0.45);
                         tryDropGrenade(enemyShip);
                         tryDropChameleonHull(enemyShip);
                         used = true;
@@ -1944,7 +1944,7 @@ public class GameScreen extends Screen {
                     this.particleSystem.spawnEnemyExplosion(
                             bonusShip.getPositionX() + bonusShip.getWidth() / 2,
                             bonusShip.getPositionY() + bonusShip.getHeight() / 2);
-					ScreenShake.raiseTo(0.40);
+					ScreenShake.raiseTo(0.45);
                     tryDropChameleonHull(bonusShip);
                     tryDropHyperfire(bonusShip);
                     used = true;

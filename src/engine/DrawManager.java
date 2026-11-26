@@ -152,7 +152,7 @@ public final class DrawManager {
     };
     /** Horizontal distance between gameplay setting values. */
     private static final int GAMEPLAY_VALUE_SPACING = 100;
-    /** Mouse-only save action shown below the gameplay setting values. */
+    /** Keyboard- and mouse-accessible save action below the setting values. */
     private static final String GAMEPLAY_SETTINGS_CONFIRM = "Confirm";
     /** Width of the column holding the audio settings. */
     private static final int AUDIO_COLUMN_WIDTH = 200;
@@ -1216,7 +1216,7 @@ public final class DrawManager {
 
     public void drawGameplaySettings(final Screen screen,
             final int selectedOption, final int difficulty,
-            final int screenShake, final boolean confirmHovered) {
+            final int screenShake, final boolean confirmSelected) {
         int[] selectedValues = { difficulty, screenShake };
         int firstLabelY = getGameplaySettingsFirstLabelY(screen);
         int rowSpacing = getGameplaySettingsRowSpacing();
@@ -1247,7 +1247,7 @@ public final class DrawManager {
             }
         }
 
-        backBufferGraphics.setColor(confirmHovered ? Color.GREEN : Color.WHITE);
+        backBufferGraphics.setColor(confirmSelected ? Color.GREEN : Color.WHITE);
         drawCenteredRegularString(screen, GAMEPLAY_SETTINGS_CONFIRM,
                 getGameplaySettingsConfirmY(screen));
 

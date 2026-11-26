@@ -5,17 +5,27 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import audio.AudioManager;
+import boss.BossManager;
 import engine.Core;
 import engine.GameClock;
 import engine.GameSettings;
 import engine.GameState;
 import engine.GameplayConfig;
+import engine.DrawManager.SpriteType;
+import entity.Boss;
 import entity.Bullet;
 import entity.BulletPool;
+import entity.EnemyShip;
+import entity.EnemyShipFormation;
+import entity.Grenade;
 import entity.Ship;
+import entity.ZigzagEnemyShip;
+import entity.item.OrbitalAnnihilator;
 import java.awt.Canvas;
 import java.awt.event.KeyEvent;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Set;
 import java.util.prefs.Preferences;
 import org.junit.jupiter.api.AfterEach;
@@ -108,13 +118,68 @@ class ScreenShakeLifecycleTest {
     void bossSpawnKeepsFullTraumaUntilItsFirstRenderedFrame() {
         GameScreen screen = campaignScreen(3);
 
-        assertEquals(0.70, ScreenShake.getTrauma(), 1e-9);
+        assertEquals(0.75, ScreenShake.getTrauma(), 1e-9);
 
         screen.update();
-        assertEquals(0.70, ScreenShake.getTrauma(), 1e-9);
+        assertEquals(0.75, ScreenShake.getTrauma(), 1e-9);
 
         screen.update();
-        assertEquals(0.63, ScreenShake.getTrauma(), 1e-9);
+        assertEquals(0.675, ScreenShake.getTrauma(), 1e-9);
+    }
+
+    @Test
+    void bossPhaseChangeAndDefeatUseTheAgreedTrauma() throws Exception {
+        GameScreen screen = campaignScreen(3);
+        BossManager manager = (BossManager) field(screen, "bossManager");
+        Boss boss = manager.getBoss();
+
+        ScreenShake.reset();
+        boss.takeDamage(boss.getMaxHealth() / 2 + 1);
+        manager.sync();
+        assertEquals(0.65, ScreenShake.getTrauma(), 1e-9);
+
+        ScreenShake.reset();
+        boss.takeDamage(boss.getCurrentHealth());
+        manager.sync();
+        assertEquals(1.00, ScreenShake.getTrauma(), 1e-9);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void campaignEnemyAndItemEventsUseTheAgreedTrauma() throws Exception {
+        GameScreen screen = campaignScreen();
+        EnemyShipFormation formation = (EnemyShipFormation) field(screen,
+                "enemyShipFormation");
+        EnemyShip enemy = formation.iterator().next();
+        Set<Bullet> bullets = (Set<Bullet>) field(screen, "bullets");
+        bullets.add(BulletPool.getBullet(enemy.getPositionX() + 4,
+                enemy.getPositionY() + 4, -4));
+
+        ScreenShake.reset();
+        invoke(screen, "manageCollisions");
+        assertEquals(0.45, ScreenShake.getTrauma(), 1e-9);
+
+        Set<Grenade> grenades = (Set<Grenade>) field(screen, "grenades");
+        grenades.add(new Grenade(20, 0, 0));
+        ScreenShake.reset();
+        invoke(screen, "manageGrenades");
+        assertEquals(0.58, ScreenShake.getTrauma(), 1e-9);
+
+        OrbitalAnnihilator annihilator = (OrbitalAnnihilator) field(screen,
+                "annihilator");
+        annihilator.arm();
+        assertTrue(annihilator.trigger());
+        setLongField(annihilator, "phaseStart",
+                System.currentTimeMillis()
+                        - OrbitalAnnihilator.CHARGE_DURATION);
+        screen.inputDelay = Core.getCooldown(0);
+        ScreenShake.reset();
+
+        screen.update();
+        assertEquals(0.58, ScreenShake.getTrauma(), 1e-9);
+
+        screen.update();
+        assertEquals(0.522, ScreenShake.getTrauma(), 1e-9);
     }
 
     @Test
@@ -126,6 +191,25 @@ class ScreenShakeLifecycleTest {
         screen.update();
 
         assertEquals(0.80, ScreenShake.getTrauma(), 1e-9);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void infiniteEnemyDefeatUsesTheAgreedTrauma() throws Exception {
+        InfiniteGameScreen screen = infiniteScreen();
+        List<ZigzagEnemyShip> enemies =
+                (List<ZigzagEnemyShip>) field(screen, "enemies");
+        ZigzagEnemyShip enemy = new ZigzagEnemyShip(100, 100,
+                SpriteType.EnemyShipA1, 1);
+        enemies.add(enemy);
+        Set<Bullet> bullets = (Set<Bullet>) field(screen, "bullets");
+        bullets.add(BulletPool.getBullet(enemy.getPositionX() + 4,
+                enemy.getPositionY() + 4, -4));
+        ScreenShake.reset();
+
+        invoke(screen, "manageCollisions");
+
+        assertEquals(0.45, ScreenShake.getTrauma(), 1e-9);
     }
 
     @Test
@@ -264,6 +348,20 @@ class ScreenShakeLifecycleTest {
         Field field = screen.getClass().getDeclaredField(name);
         field.setAccessible(true);
         return field.get(screen);
+    }
+
+    private void invoke(final Object target, final String name)
+            throws Exception {
+        Method method = target.getClass().getDeclaredMethod(name);
+        method.setAccessible(true);
+        method.invoke(target);
+    }
+
+    private void setLongField(final Object target, final String name,
+            final long value) throws Exception {
+        Field field = target.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        field.setLong(target, value);
     }
 
     private void releaseEscape() {
