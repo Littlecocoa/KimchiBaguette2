@@ -3,17 +3,27 @@ package boss;
 import boss.dialogue.BossDialogue;
 import boss.dialogue.BossDialogue.Trigger;
 import boss.dialogue.BossDialogueEventFilter;
+import boss.dialogue.BossDialogueDirector;
 import entity.Boss;
 import entity.Boss.BossType;
 
 public class BossDialogueTest {
 
-    public static void main(String[] args) {
+public static void main(String[] args)
+            throws InterruptedException {
+
         testAllDialogues();
+
         for (BossType type : BossType.values()) {
+
             testEventFiltering(type);
             testPhaseTriggers(type);
+
+            testDialogueTiming(type);
+            testDialogueQueue(type);
+            testDefeatPriority(type);
         }
+
         System.out.println("BossDialogueTest passed.");
     }
 
@@ -87,5 +97,90 @@ public class BossDialogueTest {
     private static void expect(Trigger expected, Trigger actual) {
         if (expected != actual)
             throw new AssertionError("Expected " + expected + ", got " + actual);
+    }
+
+    private static void expectLine(String expected, String actual) {
+        if (!java.util.Objects.equals(expected, actual)) {
+            throw new AssertionError(
+                    "Expected " + expected + ", got " + actual);
+        }
+    }
+
+    private static void testDialogueTiming(BossType type)
+        throws InterruptedException {
+    
+        Boss boss = new Boss(100, 78, type);
+        BossDialogue dialogue = new BossDialogue();
+
+        BossDialogueDirector director =
+                new BossDialogueDirector();
+
+        director.onBossEvent(BossEvent.spawned(boss));
+
+        String expected = dialogue.getDialogue(
+                type, Trigger.SPAWN);
+
+        expectLine(expected, director.getActiveLine());
+
+        Thread.sleep(2600);
+
+        expectLine(null, director.getActiveLine());
+    }
+
+    private static void testDialogueQueue(BossType type)
+        throws InterruptedException {
+
+        Boss boss = new Boss(100, 78, type);
+        BossDialogue dialogue = new BossDialogue();
+
+        BossDialogueDirector director =
+                new BossDialogueDirector();
+
+        director.onBossEvent(BossEvent.spawned(boss));
+        director.onBossEvent(
+                BossEvent.phaseChanged(boss, 1, 2));
+        director.onBossEvent(
+                BossEvent.phaseChanged(boss, 2, 3));
+
+        expectLine(
+                dialogue.getDialogue(type, Trigger.SPAWN),
+                director.getActiveLine());
+
+        Thread.sleep(2600);
+        expectLine(null, director.getActiveLine());
+
+        Thread.sleep(2000);
+        expectLine(
+                dialogue.getDialogue(type, Trigger.PHASE_2),
+                director.getActiveLine());
+
+        Thread.sleep(4600);
+        expectLine(null, director.getActiveLine());
+    }
+
+    private static void testDefeatPriority(BossType type)
+            throws InterruptedException {
+
+        Boss boss = new Boss(100, 78, type);
+
+        BossDialogue dialogue = new BossDialogue();
+
+        BossDialogueDirector director =
+                new BossDialogueDirector();
+
+        director.onBossEvent(BossEvent.spawned(boss));
+
+        director.onBossEvent(
+                BossEvent.phaseChanged(boss, 1, 2));
+
+        director.onBossEvent(BossEvent.defeated(boss));
+
+        expectLine(
+                dialogue.getDialogue(type, Trigger.DEFEATED),
+                director.getActiveLine());
+
+        Thread.sleep(4600);
+
+        expectLine(null, director.getActiveLine());
     }
 }
