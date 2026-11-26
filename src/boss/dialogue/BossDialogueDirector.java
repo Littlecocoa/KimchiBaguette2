@@ -59,11 +59,7 @@ public final class BossDialogueDirector implements BossEventListener {
      * @return The line to draw now, or {@code null} when there is none.
      */
     public String getActiveLine() {
-        if(this.activeLine != null 
-            && this.displayCooldown.checkFinished()){
-            
-            this.activeLine = null;
-        }
+        updateDialogue();
             
         return this.activeLine;
     }
@@ -72,5 +68,17 @@ public final class BossDialogueDirector implements BossEventListener {
         this.activeLine = line;
         this.displayCooldown.reset();
         this.dialogueCooldown.reset();
+    }
+
+    private void updateDialogue() {
+        if(this.activeLine != null &&
+            this.displayCooldown.checkFinished()){
+                this.activeLine = null;
+            }
+    }
+
+    private boolean canShowLine(){
+        return this.activeLine == null &&
+            this.dialogueCooldown.checkFinished();
     }
 }
