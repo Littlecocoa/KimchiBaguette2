@@ -50,9 +50,11 @@ public final class BossDialogueDirector implements BossEventListener {
         Trigger trigger = this.filter.filter(event);
         if(trigger == null) return;
 
+        updateDialogue();
+
         String line = this.dialogue.getDialogue(event.getBossType(), trigger);
 
-        showLine(line);
+        enqeueLine(line);
     }
 
     /**
@@ -64,21 +66,41 @@ public final class BossDialogueDirector implements BossEventListener {
         return this.activeLine;
     }
 
+    // Show the line immediately, and reset the dooldowns
     private void showLine(final String line){
         this.activeLine = line;
         this.displayCooldown.reset();
         this.dialogueCooldown.reset();
     }
 
+    // When the display cooldown is finished, clear the line
     private void updateDialogue() {
+        // Clear active line
         if(this.activeLine != null &&
             this.displayCooldown.checkFinished()){
-                this.activeLine = null;
-            }
+            this.activeLine = null;
+        }
+
+        // Show pending line
+        if(this.pendingLine != null && canShowLine()) {
+            String nextLine = this.pendingLine;
+            this.pendingLine = null;
+            showLine(nextLine);
+        }
     }
 
+    // Returns true if the director can show a line now.
     private boolean canShowLine(){
         return this.activeLine == null &&
             this.dialogueCooldown.checkFinished();
+    }
+
+    // Enqueues a line to show or shows it immediately
+    private void enqeueLine(final String line){
+        if(canShowLine()){
+            showLine(line);
+        } else if(this.pendingLine ==null){
+            this.pendingLine = line;
+        }
     }
 }
