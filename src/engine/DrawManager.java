@@ -130,6 +130,14 @@ public final class DrawManager {
     private static Graphics backBufferGraphics;
     /** Buffer image. */
     private static BufferedImage backBuffer;
+    /** Whole-number enlargement of the back buffer, when filling the screen. */
+    private static BufferedImage prescaleBuffer;
+    /**
+     * How much of what would fit a whole-number scale has to cover before the
+     * screen is filled instead. At 0.9 a display with room to spare stays
+     * pixel-exact and one that is short of the next scale gets filled.
+     */
+    private static final double FILL_THRESHOLD = 0.9;
     /** Normal sized font. */
     private static Font fontRegular;
     /** Normal sized font properties. */
@@ -1684,22 +1692,50 @@ public final class DrawManager {
         int areaWidth = frame.getContentPane().getWidth();
         int areaHeight = frame.getContentPane().getHeight();
 
-        int scale = integerScale(areaWidth, areaHeight, screen.getWidth(),
-                screen.getHeight());
-        int scaledWidth = screen.getWidth() * scale;
-        int scaledHeight = screen.getHeight() * scale;
-        int marginX = letterbox(areaWidth, scaledWidth);
-        int marginY = letterbox(areaHeight, scaledHeight);
+        int logicalWidth = screen.getWidth();
+        int logicalHeight = screen.getHeight();
+        int scale = integerScale(areaWidth, areaHeight, logicalWidth,
+                logicalHeight);
+        int imageWidth = logicalWidth * scale;
+        int imageHeight = logicalHeight * scale;
+
+        // A whole-number scale keeps the pixel grid even, and is what we use
+        // whenever it covers enough of the screen. When it does not — a 520
+        // tall game on a 982 tall screen can only double to 1040, so it stays
+        // at 1 and fills half the height — the screen is filled instead.
+        BufferedImage source = backBuffer;
+        boolean filling = fillsBetter(areaWidth, areaHeight, logicalWidth,
+                logicalHeight, scale);
+        if (filling) {
+            double fit = fittingScale(areaWidth, areaHeight, logicalWidth,
+                    logicalHeight);
+            imageWidth = Math.min(areaWidth,
+                    (int) Math.round(logicalWidth * fit));
+            imageHeight = Math.min(areaHeight,
+                    (int) Math.round(logicalHeight * fit));
+            // Up by a whole number with nearest neighbour first, then down to
+            // the size that fits. Going straight there would spread one
+            // source pixel over one screen pixel here and two there; coming
+            // down from a whole multiple keeps the grid close to even, which
+            // is what emulator front ends do for the same reason.
+            source = prescaled(logicalWidth, logicalHeight,
+                    (int) Math.ceil(fit));
+        }
+
+        int marginX = letterbox(areaWidth, imageWidth);
+        int marginY = letterbox(areaHeight, imageHeight);
 
         // Where the image landed, so that a pointer position can be read back
         // against it. Without the shake, which moves the image only.
-        DisplayConfig.setViewport(scale, marginX, marginY, screen.getWidth(),
-                screen.getHeight());
+        DisplayConfig.setViewport(marginX, marginY, imageWidth, imageHeight,
+                logicalWidth, logicalHeight);
 
         // The shake is measured in logical pixels, so it has to grow with
         // the image or it would feel weaker the more we scale up.
-        int originX = insets.left + marginX + shakeX * scale;
-        int originY = insets.top + marginY + shakeY * scale;
+        int originX = insets.left + marginX
+                + shakeX * imageWidth / logicalWidth;
+        int originY = insets.top + marginY
+                + shakeY * imageHeight / logicalHeight;
 
         // Clipped so that a shake offset cannot smear over the window border.
         drawGraphics.setClip(insets.left, insets.top, areaWidth, areaHeight);
@@ -1707,13 +1743,98 @@ public final class DrawManager {
         drawGraphics.fillRect(insets.left, insets.top, areaWidth, areaHeight);
 
         if (drawGraphics instanceof Graphics2D)
-            // Anything but nearest neighbour turns the pixel art to mush.
+            // Nearest neighbour for a whole-number scale, where anything else
+            // would turn the pixel art to mush. The filled path has already
+            // done its nearest-neighbour step and is coming down from a whole
+            // multiple, where bilinear is what softens the leftover unevenly
+            // sized pixels instead of leaving them ragged.
             ((Graphics2D) drawGraphics).setRenderingHint(
                     RenderingHints.KEY_INTERPOLATION,
-                    RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+                    filling ? RenderingHints.VALUE_INTERPOLATION_BILINEAR
+                            : RenderingHints
+                                    .VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
 
-        drawGraphics.drawImage(backBuffer, originX, originY, scaledWidth,
-                scaledHeight, frame);
+        drawGraphics.drawImage(source, originX, originY, imageWidth,
+                imageHeight, frame);
+    }
+
+    /**
+     * Enlarges the back buffer by a whole number, reusing the image.
+     *
+     * @param logicalWidth
+     *                     Width of the game's own coordinate space.
+     * @param logicalHeight
+     *                     Height of the game's own coordinate space.
+     * @param factor
+     *                     Whole number to enlarge by.
+     * @return The enlarged image.
+     */
+    private BufferedImage prescaled(final int logicalWidth,
+            final int logicalHeight, final int factor) {
+        int width = logicalWidth * factor;
+        int height = logicalHeight * factor;
+        if (prescaleBuffer == null || prescaleBuffer.getWidth() != width
+                || prescaleBuffer.getHeight() != height)
+            prescaleBuffer = new BufferedImage(width, height,
+                    BufferedImage.TYPE_INT_RGB);
+
+        Graphics2D graphics = prescaleBuffer.createGraphics();
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            graphics.drawImage(backBuffer, 0, 0, width, height, null);
+        } finally {
+            graphics.dispose();
+        }
+        return prescaleBuffer;
+    }
+
+    /**
+     * Scale that would fit if it did not have to be a whole number.
+     *
+     * @param areaWidth
+     *                      Width available to draw on.
+     * @param areaHeight
+     *                      Height available to draw on.
+     * @param logicalWidth
+     *                      Width of the game's own coordinate space.
+     * @param logicalHeight
+     *                      Height of the game's own coordinate space.
+     * @return Scale, as a ratio, or 1 for a degenerate logical size.
+     */
+    static double fittingScale(final int areaWidth, final int areaHeight,
+            final int logicalWidth, final int logicalHeight) {
+        if (logicalWidth <= 0 || logicalHeight <= 0)
+            return 1;
+        return Math.min((double) areaWidth / logicalWidth,
+                (double) areaHeight / logicalHeight);
+    }
+
+    /**
+     * Whether a whole-number scale leaves enough of the screen black to be
+     * worth filling instead.
+     *
+     * Only when there is room to grow: an area smaller than the game is left
+     * cropped as it was, rather than shrunk to fit.
+     *
+     * @param areaWidth
+     *                      Width available to draw on.
+     * @param areaHeight
+     *                      Height available to draw on.
+     * @param logicalWidth
+     *                      Width of the game's own coordinate space.
+     * @param logicalHeight
+     *                      Height of the game's own coordinate space.
+     * @param scale
+     *                      Whole-number scale that fits.
+     * @return Whether to fill the area instead.
+     */
+    static boolean fillsBetter(final int areaWidth, final int areaHeight,
+            final int logicalWidth, final int logicalHeight,
+            final int scale) {
+        double fit = fittingScale(areaWidth, areaHeight, logicalWidth,
+                logicalHeight);
+        return fit > 1 && scale < fit * FILL_THRESHOLD;
     }
 
     /**

@@ -35,12 +35,14 @@ public final class DisplayConfig {
     private static final Preferences PREFS =
             Preferences.userNodeForPackage(DisplayConfig.class);
 
-    /** Scale the last presented frame was drawn at. */
-    private static volatile int viewportScale = MIN_SCALE;
     /** Left edge of the image within the content area, in screen pixels. */
     private static volatile int viewportX;
     /** Top edge of the image within the content area, in screen pixels. */
     private static volatile int viewportY;
+    /** Width the image was drawn at, 0 until drawn. */
+    private static volatile int viewportImageWidth;
+    /** Height the image was drawn at, 0 until drawn. */
+    private static volatile int viewportImageHeight;
     /** Width of the coordinate space the game draws in, 0 until drawn. */
     private static volatile int viewportWidth;
     /** Height of the coordinate space the game draws in, 0 until drawn. */
@@ -113,32 +115,57 @@ public final class DisplayConfig {
      * shake offset is deliberately not included: it moves the image only, and
      * folding it in here would make every menu's hover jitter along with it.
      *
-     * @param scale
-     *                      Whole-number scale the image was drawn at.
+     * The image size is kept rather than a scale factor because the scale is
+     * not always a whole number: a screen with no room for the next whole
+     * scale is filled instead of left mostly black, and the pointer has to
+     * come back exactly either way.
+     *
      * @param originX
      *                      Left edge of the image within the content area.
      * @param originY
      *                      Top edge of the image within the content area.
+     * @param imageWidth
+     *                      Width the image was drawn at.
+     * @param imageHeight
+     *                      Height the image was drawn at.
      * @param logicalWidth
      *                      Width of the coordinate space the game draws in.
      * @param logicalHeight
      *                      Height of the coordinate space the game draws in.
      */
-    static void setViewport(final int scale, final int originX,
-            final int originY, final int logicalWidth,
-            final int logicalHeight) {
-        viewportScale = Math.max(MIN_SCALE, scale);
+    static void setViewport(final int originX, final int originY,
+            final int imageWidth, final int imageHeight,
+            final int logicalWidth, final int logicalHeight) {
         viewportX = originX;
         viewportY = originY;
+        viewportImageWidth = imageWidth;
+        viewportImageHeight = imageHeight;
         viewportWidth = logicalWidth;
         viewportHeight = logicalHeight;
     }
 
     /**
-     * @return Whole-number scale the last presented frame was drawn at.
+     * @return Whole-number scale the last presented frame was drawn at, which
+     *         is a scale the image was filled past when it does not divide.
      */
     public static int getViewportScale() {
-        return viewportScale;
+        if (viewportWidth <= 0)
+            return MIN_SCALE;
+        return Math.max(MIN_SCALE, viewportImageWidth / viewportWidth);
+    }
+
+    /**
+     * @return Width the last presented frame was drawn at, 0 until drawn.
+     */
+    public static int getViewportImageWidth() {
+        return viewportImageWidth;
+    }
+
+    /**
+     * @return Height the last presented frame was drawn at, 0 until drawn.
+     */
+    public static int getViewportImageHeight() {
+        return viewportImageHeight;
     }
 
     /**
@@ -151,7 +178,8 @@ public final class DisplayConfig {
      *         same thing the pointer leaving the window reports.
      */
     public static int toLogicalX(final int screenX) {
-        return toLogical(screenX, viewportX, viewportWidth);
+        return toLogical(screenX, viewportX, viewportImageWidth,
+                viewportWidth);
     }
 
     /**
@@ -163,14 +191,15 @@ public final class DisplayConfig {
      * @return Logical y, or -1 when the pointer is off the image.
      */
     public static int toLogicalY(final int screenY) {
-        return toLogical(screenY, viewportY, viewportHeight);
+        return toLogical(screenY, viewportY, viewportImageHeight,
+                viewportHeight);
     }
 
     private static int toLogical(final int position, final int origin,
-            final int extent) {
+            final int imageExtent, final int logicalExtent) {
         // Nothing has been presented yet, so there is no image to be off, and
         // no scaling to undo either.
-        if (extent <= 0)
+        if (imageExtent <= 0 || logicalExtent <= 0)
             return position;
 
         // Subtracting first, and before dividing: a position one pixel into
@@ -180,7 +209,9 @@ public final class DisplayConfig {
         if (offset < 0)
             return -1;
 
-        int logical = offset / viewportScale;
-        return logical < extent ? logical : -1;
+        // By the image size rather than by a scale, so that an image filled
+        // past a whole scale comes back just as exactly.
+        long logical = (long) offset * logicalExtent / imageExtent;
+        return logical < logicalExtent ? (int) logical : -1;
     }
 }

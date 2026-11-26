@@ -160,8 +160,12 @@ public final class DisplayScalingDemo {
         Dimension window = frame.getSize();
         Dimension content = frame.getContentPane().getSize();
         int scale = DisplayConfig.getViewportScale();
-        int marginX = DrawManager.letterbox(content.width, WIDTH * scale);
-        int marginY = DrawManager.letterbox(content.height, HEIGHT * scale);
+        int imageWidth = DisplayConfig.getViewportImageWidth();
+        int imageHeight = DisplayConfig.getViewportImageHeight();
+        boolean filled = imageWidth != WIDTH * scale
+                || imageHeight != HEIGHT * scale;
+        int marginX = DrawManager.letterbox(content.width, imageWidth);
+        int marginY = DrawManager.letterbox(content.height, imageHeight);
 
         System.out.println();
         System.out.println("== " + what + " ==");
@@ -172,19 +176,25 @@ public final class DisplayScalingDemo {
         System.out.println("  window       " + window.width + "x"
                 + window.height + ", content " + content.width + "x"
                 + content.height);
-        System.out.println("  presented    " + scale + "x, letterbox "
-                + marginX + "," + marginY + ", image " + (WIDTH * scale) + "x"
-                + (HEIGHT * scale));
+        System.out.println("  presented    " + (filled ? "filled" : scale
+                + "x") + ", letterbox " + marginX + "," + marginY + ", image "
+                + imageWidth + "x" + imageHeight);
 
         check(what, frame.getWidth() == WIDTH && frame.getHeight() == HEIGHT,
                 "the logical size changed with the window");
-        check(what, content.width >= WIDTH * scale
-                && content.height >= HEIGHT * scale,
+        check(what, content.width >= imageWidth
+                && content.height >= imageHeight,
                 "the image does not fit in the content area");
+        // The game's shape is kept either way, whole-number or filled.
+        check(what, Math.abs((double) imageWidth / imageHeight
+                - (double) WIDTH / HEIGHT) < 0.01,
+                "the image is " + imageWidth + "x" + imageHeight
+                        + ", which is not the game's shape");
         if (!DisplayConfig.isFullscreen() && !what.startsWith("dragged"))
-            check(what, scale == DisplayConfig.getScale(),
-                    "asked for " + DisplayConfig.getScale() + "x, presented "
-                            + scale + "x");
+            check(what, scale == DisplayConfig.getScale() && !filled,
+                    "asked for " + DisplayConfig.getScale()
+                            + "x exactly, presented " + imageWidth + "x"
+                            + imageHeight);
 
         if (DisplayConfig.isFullscreen()) {
             // The window covers the screen, so the real pointer is on it
@@ -195,8 +205,8 @@ public final class DisplayScalingDemo {
                     + " docs/Display_Scaling_Controls.md");
             return;
         }
-        checkPointer(what, frame, drawManager, screen, scale, marginX,
-                marginY);
+        checkPointer(what, frame, drawManager, screen, imageWidth,
+                imageHeight, marginX, marginY);
     }
 
     /**
@@ -206,8 +216,8 @@ public final class DisplayScalingDemo {
      */
     private static void checkPointer(final String what, final Frame frame,
             final DrawManager drawManager, final Screen screen,
-            final int scale, final int marginX, final int marginY)
-            throws Exception {
+            final int imageWidth, final int imageHeight, final int marginX,
+            final int marginY) throws Exception {
         for (int option : new int[] { HIGH_SCORES_OPTION, PLAY_OPTION }) {
             Point logical = findOption(drawManager, screen, option);
             if (logical == null) {
@@ -216,9 +226,12 @@ public final class DisplayScalingDemo {
             }
 
             // Middle of the block of screen pixels that one logical pixel
-            // covers, which is where someone aiming at it would click.
-            movePointer(frame, marginX + logical.x * scale + scale / 2,
-                    marginY + logical.y * scale + scale / 2);
+            // covers, which is where someone aiming at it would click. Worked
+            // out from the image size, since a filled image is not a whole
+            // multiple of the game.
+            movePointer(frame,
+                    marginX + (logical.x * 2 + 1) * imageWidth / WIDTH / 2,
+                    marginY + (logical.y * 2 + 1) * imageHeight / HEIGHT / 2);
 
             int readX = Core.getInputManager().getMouseX();
             int readY = Core.getInputManager().getMouseY();

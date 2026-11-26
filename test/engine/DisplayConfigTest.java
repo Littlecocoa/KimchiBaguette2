@@ -28,6 +28,8 @@ public final class DisplayConfigTest {
 		checkPointerBeforeFirstFrame();
 		checkPointerAtEveryScale();
 		checkPointerOffTheImage();
+		checkPointerOnAFilledImage();
+		checkWhenFillingIsWorthIt();
 
 		System.out.println("Display config checks passed.");
 	}
@@ -110,8 +112,8 @@ public final class DisplayConfigTest {
 			// the scale, so an off-by-one in the order of operations shows.
 			int marginX = 37;
 			int marginY = 11;
-			DisplayConfig.setViewport(scale, marginX, marginY, logicalWidth,
-					logicalHeight);
+			DisplayConfig.setViewport(marginX, marginY, logicalWidth * scale,
+					logicalHeight * scale, logicalWidth, logicalHeight);
 			check(DisplayConfig.getViewportScale() == scale,
 					"The viewport scale should be the one presented");
 
@@ -145,8 +147,8 @@ public final class DisplayConfigTest {
 		int scale = 2;
 		int marginX = 37;
 		int marginY = 11;
-		DisplayConfig.setViewport(scale, marginX, marginY, logicalWidth,
-				logicalHeight);
+		DisplayConfig.setViewport(marginX, marginY, logicalWidth * scale,
+				logicalHeight * scale, logicalWidth, logicalHeight);
 
 		check(DisplayConfig.toLogicalX(marginX - 1) == -1,
 				"One pixel into the left letterbox is off the image");
@@ -166,6 +168,95 @@ public final class DisplayConfigTest {
 		check(DisplayConfig.toLogicalY(marginY + logicalHeight * scale - 1)
 				== logicalHeight - 1,
 				"The last row should be the last logical pixel");
+	}
+
+	/**
+	 * A screen too short for the next whole scale is filled instead, so the
+	 * image is not a whole multiple of the game. Every pointer position on it
+	 * still has to land on a logical pixel, and every logical pixel has to be
+	 * reachable, or parts of a menu would be unclickable.
+	 */
+	private static void checkPointerOnAFilledImage() {
+		int logicalWidth = 448;
+		int logicalHeight = 520;
+		// 448x520 filling a 1512x982 screen: 1.888 times, not 1 or 2.
+		int imageWidth = 846;
+		int imageHeight = 982;
+		int marginX = (1512 - imageWidth) / 2;
+		int marginY = 0;
+		DisplayConfig.setViewport(marginX, marginY, imageWidth, imageHeight,
+				logicalWidth, logicalHeight);
+
+		check(DisplayConfig.getViewportScale() == 1,
+				"A filled image reports the whole scale it was filled past");
+
+		boolean[] reached = new boolean[logicalWidth];
+		for (int screenX = marginX; screenX < marginX + imageWidth; screenX++) {
+			int logical = DisplayConfig.toLogicalX(screenX);
+			check(logical >= 0 && logical < logicalWidth,
+					"Screen x " + screenX + " is on the image, so it has a"
+							+ " logical pixel, not " + logical);
+			reached[logical] = true;
+		}
+		for (int logicalX = 0; logicalX < logicalWidth; logicalX++)
+			check(reached[logicalX],
+					"No pointer position maps to logical x " + logicalX);
+
+		boolean[] reachedDown = new boolean[logicalHeight];
+		for (int screenY = marginY; screenY < marginY + imageHeight;
+				screenY++) {
+			int logical = DisplayConfig.toLogicalY(screenY);
+			check(logical >= 0 && logical < logicalHeight,
+					"Screen y " + screenY + " is on the image, so it has a"
+							+ " logical pixel, not " + logical);
+			reachedDown[logical] = true;
+		}
+		for (int logicalY = 0; logicalY < logicalHeight; logicalY++)
+			check(reachedDown[logicalY],
+					"No pointer position maps to logical y " + logicalY);
+
+		// The edges are still the edges.
+		check(DisplayConfig.toLogicalX(marginX) == 0,
+				"The first column of a filled image is the first pixel");
+		check(DisplayConfig.toLogicalX(marginX + imageWidth - 1)
+				== logicalWidth - 1,
+				"The last column of a filled image is the last pixel");
+		check(DisplayConfig.toLogicalX(marginX - 1) == -1,
+				"The letterbox beside a filled image is off it");
+		check(DisplayConfig.toLogicalX(marginX + imageWidth) == -1,
+				"One pixel past a filled image is off it");
+	}
+
+	/**
+	 * Filling costs the even pixel grid, so it is only worth it when the
+	 * whole-number scale would leave a lot of the screen black.
+	 */
+	private static void checkWhenFillingIsWorthIt() {
+		// The screens this was written for: short of the next whole scale.
+		checkFills(1512, 982, true);
+		checkFills(1366, 768, true);
+		checkFills(2560, 1440, true);
+
+		// Room to spare, so the pixels stay exact.
+		checkFills(1920, 1080, false);
+		checkFills(3840, 2160, false);
+		// An exact multiple is never worth filling.
+		checkFills(448, 520, false);
+		checkFills(896, 1040, false);
+		checkFills(1344, 1560, false);
+
+		// Smaller than the game: cropped as before rather than shrunk.
+		checkFills(300, 300, false);
+		checkFills(0, 0, false);
+	}
+
+	private static void checkFills(final int areaWidth, final int areaHeight,
+			final boolean expected) {
+		int scale = DrawManager.integerScale(areaWidth, areaHeight, 448, 520);
+		boolean fills = DrawManager.fillsBetter(areaWidth, areaHeight, 448,
+				520, scale);
+		check(fills == expected, areaWidth + "x" + areaHeight + " at " + scale
+				+ "x should " + (expected ? "" : "not ") + "be filled");
 	}
 
 	private static void check(final boolean condition, final String message) {
