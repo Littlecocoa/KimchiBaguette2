@@ -70,7 +70,13 @@ public class Frame extends JFrame {
 		this.width = width;
 		this.height = height;
 
-		setResizable(false);
+		// Resizable so the window gets the platform's own controls: the green
+		// button on macOS, which is greyed out on a fixed window, and maximize
+		// on Windows. Any size the player drags it to is presented the same
+		// way as a scale the keys pick, at the largest whole-number scale that
+		// fits with the rest left black, so there is nothing to protect here
+		// beyond not letting the window get smaller than the game itself.
+		setResizable(true);
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		setTitle("Invaders");
 
@@ -152,8 +158,10 @@ public class Frame extends JFrame {
 		// Nothing on screen would change. Showing the window again anyway
 		// would cost it the keyboard for no reason, and on a screen with no
 		// room for a larger scale that is most presses of the scale key.
+		// A window the player has dragged does count as a change, so that the
+		// scale key snaps it back to a whole multiple of the game.
 		if (appliedScale != 0 && fullscreen == appliedFullscreen
-				&& (fullscreen || scale == appliedScale))
+				&& (fullscreen || (scale == appliedScale && isExactMultiple())))
 			return;
 
 		// Resizing a window and dropping its decoration are Swing's own work
@@ -186,6 +194,12 @@ public class Frame extends JFrame {
 
 		appliedFullscreen = fullscreen;
 		appliedScale = applied;
+		// Logged so that "did my key press arrive?" can be answered from the
+		// log rather than by watching the window.
+		Core.getLogger().info("Display: " + (fullscreen ? "fullscreen"
+				: applied + "x window") + ", content "
+				+ getContentPane().getWidth() + "x"
+				+ getContentPane().getHeight());
 
 		// Showing the window again does not necessarily bring the keyboard
 		// back with it, and without it the next key press goes nowhere.
@@ -251,6 +265,16 @@ public class Frame extends JFrame {
 	}
 
 	/**
+	 * @return Whether the content area is exactly the logical size times the
+	 *         scale the window was last given.
+	 */
+	private boolean isExactMultiple() {
+		Dimension content = getContentPane().getSize();
+		return content.width == this.width * appliedScale
+				&& content.height == this.height * appliedScale;
+	}
+
+	/**
 	 * Makes the content area exactly the logical size times the scale, so that
 	 * whole logical pixels fill it with nothing left over.
 	 *
@@ -274,6 +298,11 @@ public class Frame extends JFrame {
 		}
 
 		Insets insets = getInsets();
+		// Never smaller than the game, which a resizable window would
+		// otherwise allow, and which would crop it rather than scale it down.
+		setMinimumSize(new Dimension(
+				this.width + insets.left + insets.right,
+				this.height + insets.top + insets.bottom));
 		setSize(content.width + insets.left + insets.right,
 				content.height + insets.top + insets.bottom);
 		validate();

@@ -73,6 +73,12 @@ public final class DisplayScalingDemo {
         apply();
         report("2x window again", frame, drawManager, screen);
 
+        // A size nobody would pick, as if the window had been dragged there:
+        // the player can do this now that the window is resizable, and every
+        // size has to present and read the pointer like any other.
+        resizeByHand(frame, 2 * WIDTH + 97, 2 * HEIGHT + 53);
+        report("dragged to an awkward size", frame, drawManager, screen);
+
         drawing = false;
         Thread.sleep(200);
 
@@ -120,6 +126,26 @@ public final class DisplayScalingDemo {
         Thread.sleep(SETTLE_MILLIS);
     }
 
+    /**
+     * Resizes the window the way dragging its corner would, rather than
+     * through the settings.
+     *
+     * @param frame
+     *              Window to resize.
+     * @param width
+     *              Content width to ask for.
+     * @param height
+     *              Content height to ask for.
+     */
+    private static void resizeByHand(final Frame frame, final int width,
+            final int height) throws Exception {
+        java.awt.Insets insets = frame.getInsets();
+        javax.swing.SwingUtilities.invokeAndWait(() -> frame.setSize(
+                width + insets.left + insets.right,
+                height + insets.top + insets.bottom));
+        Thread.sleep(SETTLE_MILLIS);
+    }
+
     /** Asks the drawing thread to apply the settings, and waits for it. */
     private static void apply() throws Exception {
         applyPending = true;
@@ -155,7 +181,7 @@ public final class DisplayScalingDemo {
         check(what, content.width >= WIDTH * scale
                 && content.height >= HEIGHT * scale,
                 "the image does not fit in the content area");
-        if (!DisplayConfig.isFullscreen())
+        if (!DisplayConfig.isFullscreen() && !what.startsWith("dragged"))
             check(what, scale == DisplayConfig.getScale(),
                     "asked for " + DisplayConfig.getScale() + "x, presented "
                             + scale + "x");
