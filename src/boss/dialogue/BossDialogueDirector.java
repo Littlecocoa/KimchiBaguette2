@@ -52,13 +52,25 @@ public final class BossDialogueDirector implements BossEventListener {
 
         String line = this.dialogue.getDialogue(event.getBossType(), trigger);
 
-        this.activeLine = line;
+        showLine(line);
     }
 
     /**
      * @return The line to draw now, or {@code null} when there is none.
      */
     public String getActiveLine() {
+        if(this.activeLine != null 
+            && this.displayCooldown.checkFinished()){
+            
+            this.activeLine = null;
+        }
+            
         return this.activeLine;
+    }
+
+    private void showLine(final String line){
+        this.activeLine = line;
+        this.displayCooldown.reset();
+        this.dialogueCooldown.reset();
     }
 }
