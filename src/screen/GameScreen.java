@@ -213,6 +213,8 @@ public class GameScreen extends Screen {
 	private PlayerStatus playerStatus;
 	/** State of the debug shield key on the previous frame. */
 	private boolean shieldDebugKeyWasDown;
+	/** First shake frame was prepared before initialization events were sent. */
+	private boolean screenShakeFramePrepared;
     /** Total bullets shot by the player. */
     private int bulletsShot;
     /** Total ships destroyed by the player. */
@@ -488,6 +490,11 @@ public class GameScreen extends Screen {
 	 */
 	public final void initialize() {
 		super.initialize();
+		ScreenShake.reset();
+		ScreenShake.setIntensity(
+				GameplayConfig.getScreenShakeIntensity());
+		ScreenShake.update();
+		this.screenShakeFramePrepared = true;
 
 		enemyShipFormation = createFormation();
 
@@ -614,6 +621,7 @@ public class GameScreen extends Screen {
 			if (isPaused()) {
 				GameClock.pause();
 				AudioManager.pauseBGM();
+				ScreenShake.reset();
 				if (this.runSession != null) {
 					this.runSession.stopActiveSegment(System.nanoTime());
 				}
@@ -630,6 +638,11 @@ public class GameScreen extends Screen {
 		if (isPaused()) {
 			draw();
 			return;
+		}
+		if (this.screenShakeFramePrepared) {
+			this.screenShakeFramePrepared = false;
+		} else {
+			ScreenShake.update();
 		}
 		if (this.recordsService != null) {
 			long now = System.currentTimeMillis();
