@@ -141,6 +141,9 @@ public final class DrawManager {
 
     /** Options of the settings menu, in order. */
     private static final String[] SETTINGS_MENU_OPTIONS = { "Audio", "Controls", "Gameplay", "Back" };
+
+    /** Options of the pause menu, in order. */
+    private static final String[] PAUSE_MENU_OPTIONS = {"Resume", "Settings", "Abandon run"};
     /** Rows of the gameplay settings menu, in order. */
     private static final String[] GAMEPLAY_SETTINGS_OPTIONS = {
             "Difficulty", "Screen Shake"
@@ -545,13 +548,30 @@ public final class DrawManager {
      * @param screen
      *               Screen to draw on.
      */
+
     public void drawPaused(final Screen screen) {
         int scale = 4;
-        drawIcon(Icon.PAUSE, screen.getWidth() / 2 - Icon.PAUSE.getWidth()
-                * scale / 2, screen.getHeight() / 2 - 50, scale);
+        int centerY = screen.getHeight() / 2;
+
+        drawIcon(Icon.PAUSE, screen.getWidth() / 2
+                        - Icon.PAUSE.getWidth() * scale / 2,
+                centerY - 100, scale);
+
         backBufferGraphics.setColor(GameColors.TEXT);
-        drawCenteredBigString(screen, "Paused", screen.getHeight() / 2 + 20);
+        drawCenteredBigString(screen, "Paused", centerY - 30);
+
+        String[] options = PAUSE_MENU_OPTIONS;
+
+        for (int i = 0; i < options.length; i++) {
+            backBufferGraphics.setColor(
+                    i == screen.getSelectedPauseOption()
+                            ? Color.GREEN : Color.WHITE);
+
+            drawCenteredRegularString(screen, options[i],
+                    centerY + 20 + i * 35);
+        }
     }
+
 
     /**
      * Draws an icon to the left of a centered menu label. The selected
@@ -2018,6 +2038,22 @@ public final class DrawManager {
         }
 
         return -1;
+    }
+
+
+    /** Returns the pause menu option under the mouse,
+     * or -1 if none.
+     */
+    public int getPauseMenuOptionAt(final Screen screen,
+                                    final int mouseX, final int mouseY) {
+
+        if (fontRegularMetrics == null) {
+            return -1;
+        }
+
+        return getCenteredOptionAt(screen, PAUSE_MENU_OPTIONS,
+                screen.getHeight() / 2 + 20, 35,
+                mouseX, mouseY);
     }
 
     /**
