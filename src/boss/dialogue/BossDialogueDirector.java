@@ -49,10 +49,22 @@ public final class BossDialogueDirector implements BossEventListener {
 
         Trigger trigger = this.filter.filter(event);
         if(trigger == null) return;
+        
+        String line = this.dialogue.getDialogue(event.getBossType(), trigger);
+
+        // Handle DEFEATED, SPAWN triggers
+        if (trigger == Trigger.DEFEATED){
+            this.pendingLine = null;
+            showLine(line);
+            return;
+        }
+        if (trigger == Trigger.SPAWN){
+            this.pendingLine = null;
+            showLine(line);
+            return;
+        }
 
         updateDialogue();
-
-        String line = this.dialogue.getDialogue(event.getBossType(), trigger);
 
         enqeueLine(line);
     }
