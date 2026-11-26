@@ -651,6 +651,7 @@ public class GameScreen extends Screen {
 		clearSlowIfEnergyShieldActive();
 
         if (this.inputDelay.checkFinished() && !this.levelFinished) {
+			this.dialogueDirector.restartSpawnLine();
             if (this.runSession != null) this.runSession.startActiveSegment(System.nanoTime());
             if (this.runSession != null && this.recordsService != null)
                 this.recordsService.activeDuration(this.runSession.getRunId(),
@@ -963,7 +964,7 @@ public class GameScreen extends Screen {
 			this.bossSpeechSeen = true;
 		}
 		String bossLine = this.dialogueDirector.getActiveLine();
-		if (bossLine != null && this.bossSpeechSeen)
+		if (bossLine != null && this.bossSpeechSeen &&this.inputDelay.checkFinished())
 			drawManager.drawBossSpeech(this, bossLine, this.bossSpeechX,
 					this.bossSpeechY);
 

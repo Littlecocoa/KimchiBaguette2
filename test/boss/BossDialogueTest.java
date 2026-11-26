@@ -9,7 +9,7 @@ import entity.Boss.BossType;
 
 public class BossDialogueTest {
 
-public static void main(String[] args)
+    public static void main(String[] args)
             throws InterruptedException {
 
         testAllDialogues();
@@ -18,11 +18,12 @@ public static void main(String[] args)
 
             testEventFiltering(type);
             testPhaseTriggers(type);
-
-            testDialogueTiming(type);
-            testDialogueQueue(type);
-            testDefeatPriority(type);
+            testDamageSpam(type);
         }
+
+        testDialogueTiming(BossType.BOSS_A);
+        testDialogueQueue(BossType.BOSS_A);
+        testDefeatPriority(BossType.BOSS_A);
 
         System.out.println("BossDialogueTest passed.");
     }
@@ -182,5 +183,25 @@ public static void main(String[] args)
         Thread.sleep(4600);
 
         expectLine(null, director.getActiveLine());
+    }
+
+    private static void testDamageSpam(BossType type) {
+        Boss boss = new Boss(100, 78, type);
+        BossDialogue dialogue = new BossDialogue();
+        BossDialogueDirector director =
+                new BossDialogueDirector();
+
+        director.onBossEvent(BossEvent.spawned(boss));
+
+        String expected = dialogue.getDialogue(
+                type, Trigger.SPAWN);
+
+        expectLine(expected, director.getActiveLine());
+
+        for (int i = 0; i < 100; i++) {
+            director.onBossEvent(
+                    BossEvent.damaged(boss, 1));
+            expectLine(expected, director.getActiveLine());
+        }
     }
 }

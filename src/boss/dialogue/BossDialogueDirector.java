@@ -7,18 +7,16 @@ import engine.Cooldown;
 import engine.Core;
 
 /**
- * Decides which boss line is on screen. It listens on the boss event bus and
- * exposes the line the renderer should draw, so neither the boss code nor the
- * renderer needs to know about the other.
+ * Manages boss dialogue timing, queueing and defeat priority.
  *
- * Contract only. {@link BossDialogue} supplies the line table and
- * {@link BossDialogueEventFilter} supplies event filtering and phase triggers.
- * The queue and timing task (KAN-20) should own one filter, pass events to
- * {@link BossDialogueEventFilter#filter(BossEvent)}, and queue only non-null
- * triggers using the event's boss type. {@link #getActiveLine()}
- * returns {@code null} for now, which the renderer already treats as "draw
- * nothing".
+ * Filters boss events and displays dialogue for 2.5 seconds
+ * with a 2-second gap between consecutive lines.
+ *
+ * Stores at most one pending dialogue and discards overflow.
+ * Defeat dialogue immediately overrides the active dialogue
+ * and clears the pending dialogue.
  */
+
 public final class BossDialogueDirector implements BossEventListener {
 
     private static final int DISPLAY_DURATION = 2500; // How long to display a line, in milliseconds.
@@ -37,6 +35,7 @@ public final class BossDialogueDirector implements BossEventListener {
 
     private String activeLine; // The line to draw now, or {@code null} when there is none.
     private String pendingLine; // The line to draw next, or {@code null} when there is none.
+    private String spawnLine; // The line to draw on spawn, or {@code null} when there is none.
 
     /**
      * Receives a boss event and queues a line for it, if that event has one.
@@ -55,11 +54,13 @@ public final class BossDialogueDirector implements BossEventListener {
         // Handle DEFEATED, SPAWN triggers
         if (trigger == Trigger.DEFEATED){
             this.pendingLine = null;
+            this.spawnLine = null;
             showLine(line);
             return;
         }
         if (trigger == Trigger.SPAWN){
             this.pendingLine = null;
+            this.spawnLine = line;
             showLine(line);
             return;
         }
@@ -70,11 +71,12 @@ public final class BossDialogueDirector implements BossEventListener {
     }
 
     /**
-     * @return The line to draw now, or {@code null} when there is none.
+     * Updates the dialogue timeline and returns the active line.
+     *
+     * @return the active dialogue, or {@code null} if none is active
      */
     public String getActiveLine() {
         updateDialogue();
-
         return this.activeLine;
     }
 
@@ -113,6 +115,14 @@ public final class BossDialogueDirector implements BossEventListener {
             showLine(line);
         } else if(this.pendingLine ==null){
             this.pendingLine = line;
+        }
+    }
+
+    // Restarts the spawn dialogue after the initial countdown
+    public void restartSpawnLine() {
+        if(this.spawnLine != null) {
+            showLine(this.spawnLine);
+            this.spawnLine =null;
         }
     }
 }
