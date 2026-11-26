@@ -1624,8 +1624,13 @@ public final class DrawManager {
         } catch (IllegalStateException e) {
             // The window changed shape underneath us and took its buffers
             // with it. Dropping one frame is better than taking the game
-            // down, and the next frame builds a new strategy.
+            // down, but the dead strategy has to go with it: keeping it would
+            // throw again on every later frame and leave the window black for
+            // good instead of for one frame.
             logger.fine("Lost the buffers while presenting: " + e);
+            BufferStrategy dead = frame.getBufferStrategy();
+            if (dead != null)
+                dead.dispose();
         } finally {
             backBufferGraphics.dispose();
         }

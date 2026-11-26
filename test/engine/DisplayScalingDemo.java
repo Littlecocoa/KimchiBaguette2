@@ -140,7 +140,9 @@ public final class DisplayScalingDemo {
         System.out.println();
         System.out.println("== " + what + " ==");
         System.out.println("  setting      scale " + DisplayConfig.getScale()
-                + ", fullscreen " + DisplayConfig.isFullscreen());
+                + ", fullscreen " + DisplayConfig.isFullscreen()
+                + ", swing.bufferPerWindow "
+                + System.getProperty("swing.bufferPerWindow"));
         System.out.println("  window       " + window.width + "x"
                 + window.height + ", content " + content.width + "x"
                 + content.height);

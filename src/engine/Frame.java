@@ -8,8 +8,10 @@ import java.awt.Rectangle;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferStrategy;
+import java.lang.reflect.InvocationTargetException;
 
 import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 
 import screen.Screen;
 
@@ -18,7 +20,7 @@ import screen.Screen;
  *
  * The frame holds the game at a fixed logical size and makes the window a
  * whole-number multiple of it, so the window can grow without the game having
- * to know. F11 fills the screen, F10 steps through the scales.
+ * to know. F11 fills the screen, F9 steps through the scales.
  *
  * @author <a href="mailto:RobertoIA1987@gmail.com">Roberto Izquierdo Amo</a>
  *
@@ -35,9 +37,22 @@ public class Frame extends JFrame {
 	/** Display change asked for by a key, applied between frames. */
 	private volatile boolean displayChangePending;
 	/** Scale the window is showing, or 0 before it is first shown. */
-	private int appliedScale;
+	private volatile int appliedScale;
 	/** Whether the window is currently filling the screen. */
-	private boolean appliedFullscreen;
+	private volatile boolean appliedFullscreen;
+
+	static {
+		// Swing's per-window buffer is a buffer strategy on the window, and a
+		// window has room for one. It would fight the strategy DrawManager
+		// presents through: on Windows the pair showed up as a black
+		// fullscreen, and as a NullPointerException out of Swing's paint
+		// manager when a resize pulled the buffers out from under it. We paint
+		// every frame ourselves, so Swing has nothing to buffer. Set here
+		// because it has to be set before any window exists, and the frame is
+		// the first thing to make one. An explicit setting wins.
+		if (System.getProperty("swing.bufferPerWindow") == null)
+			System.setProperty("swing.bufferPerWindow", "false");
+	}
 
 	/**
 	 * Initializes the new frame.
@@ -141,22 +156,63 @@ public class Frame extends JFrame {
 				&& (fullscreen || scale == appliedScale))
 			return;
 
+		// Resizing a window and dropping its decoration are Swing's own work
+		// and belong on the event thread, but they must not happen while a
+		// frame is being presented. Waiting for the event thread keeps both:
+		// the caller here is the thread that draws, and it stays blocked
+		// until the window has finished changing.
+		int target = scale;
+		onEventThread(() -> changeDisplay(fullscreen, target));
+	}
+
+	/**
+	 * Puts the window into the asked-for state. Event thread only.
+	 *
+	 * @param fullscreen
+	 *                   Whether to fill the screen.
+	 * @param scale
+	 *                   Scale to show, when windowed.
+	 */
+	private void changeDisplay(final boolean fullscreen, final int scale) {
 		// The buffers belong to the window as it is now. Dropping them before
 		// it changes leaves DrawManager to build new ones for the new size.
 		discardBufferStrategy();
 
+		int applied = scale;
 		if (fullscreen)
 			enterFullscreen();
 		else
-			scale = enterWindowed(scale);
+			applied = enterWindowed(scale);
 
 		appliedFullscreen = fullscreen;
-		appliedScale = scale;
+		appliedScale = applied;
 
 		// Showing the window again does not necessarily bring the keyboard
 		// back with it, and without it the next key press goes nowhere.
 		toFront();
 		requestFocus();
+	}
+
+	/**
+	 * Runs work on the event thread and waits for it, or runs it directly if
+	 * that is already where we are.
+	 *
+	 * @param work
+	 *             Work to run.
+	 */
+	private static void onEventThread(final Runnable work) {
+		if (SwingUtilities.isEventDispatchThread()) {
+			work.run();
+			return;
+		}
+		try {
+			SwingUtilities.invokeAndWait(work);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		} catch (InvocationTargetException e) {
+			throw new IllegalStateException("Could not change the display",
+					e.getCause());
+		}
 	}
 
 	/**
@@ -313,7 +369,11 @@ public class Frame extends JFrame {
 				DisplayConfig.setFullscreen(!DisplayConfig.isFullscreen());
 				displayChangePending = true;
 				break;
-			case KeyEvent.VK_F10:
+			case KeyEvent.VK_F9:
+				// Not F10: Windows reserves it for the window's own menu and
+				// takes it before Swing sees it, which left the game with the
+				// system menu open and no keys reaching it.
+				//
 				// Stepping the scale leaves fullscreen, so that the change is
 				// something you can see rather than one stored for later.
 				DisplayConfig.setScale(DisplayConfig.nextScale());

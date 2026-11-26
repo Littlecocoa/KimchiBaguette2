@@ -12,10 +12,14 @@ of this: screens still draw in 448x520 and read mouse positions in 448x520.
 | Key | What it does |
 | --- | --- |
 | **F11** | Fills the screen, or goes back to a window |
-| **F10** | Steps the window through 1x, 2x, 3x and back to 1x, leaving fullscreen if it was on |
+| **F9** | Steps the window through 1x, 2x, 3x and back to 1x, leaving fullscreen if it was on |
 
 Both work on every screen, including during a level, because they are on the
 window rather than in any one screen's update.
+
+Not F10, which was the first choice: Windows reserves it for the window's own
+menu and takes it before Swing sees it, so pressing it opened the system menu
+and no further key reached the game.
 
 The scale and the fullscreen flag are stored with the other settings
 (`java.util.prefs`), so they survive a restart.
@@ -24,7 +28,7 @@ The scale and the fullscreen flag are stored with the other settings
 
 A window is only grown to a scale the desktop has room for. The window at 2x is
 896x1072 including the title bar, which does not fit on a 1512x982 laptop
-screen, so on that screen F10 keeps showing 1x whatever the setting says. The
+screen, so on that screen F9 keeps showing 1x whatever the setting says. The
 setting is still remembered: plug in a larger screen and it will be used.
 
 Fullscreen has the same rule. The image is drawn at the largest whole-number
@@ -38,6 +42,22 @@ Scaling pixel art by 1.5 turns one source pixel into one screen pixel here and
 two there, and the sprites come out uneven. Integer scale plus a letterbox is
 what pixel games do instead. `DrawManager.integerScale` picks the scale and
 `DrawManager.letterbox` centres the result.
+
+## Two things the window must not share
+
+**Swing's per-window buffer.** `Frame` sets `swing.bufferPerWindow` to `false`
+before any window exists. Swing's paint manager keeps its own buffer strategy
+on the window, a window has room for one, and ours is the one frames are
+presented through. The two together showed up on Windows as a black fullscreen,
+and as a `NullPointerException` out of Swing's paint manager when a resize
+pulled the buffers out from under it. We paint every frame ourselves, so Swing
+has nothing to buffer.
+
+**The thread.** A display change is asked for by a key, applied between frames
+by `DrawManager`, and carried out on the event thread, which the drawing thread
+waits for. Resizing a window is Swing's work and belongs on its thread; doing
+it while a frame is being presented invalidates the buffers mid-draw. Waiting
+rather than posting is what keeps both true at once.
 
 ## The part that breaks everything if it is wrong
 
@@ -81,7 +101,7 @@ covers the screen and the real pointer is always on it.
 
 Three things only a person can check, in the game itself:
 
-1. Press F10 and F11, and confirm the keyboard still works afterwards. The
+1. Press F9 and F11, and confirm the keyboard still works afterwards. The
    window has to keep the focus across a resize.
 2. Hover the menus at each scale and watch the highlight follow the pointer.
 3. In fullscreen, hover a menu entry and then the black border, and check the
