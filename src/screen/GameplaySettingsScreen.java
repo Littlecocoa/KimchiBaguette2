@@ -12,6 +12,7 @@ public class GameplaySettingsScreen extends Screen {
     private static final int SCREEN_SHAKE_OPTION = 1;
     private static final int OPTION_COUNT = 2;
     private static final int VALUE_COUNT = 3;
+    private static final int CONFIRM_OPTION = OPTION_COUNT * VALUE_COUNT;
     private static final int SELECTION_TIME = 200;
 
     private static final double[] SCREEN_SHAKE_VALUES = {
@@ -53,6 +54,7 @@ public class GameplaySettingsScreen extends Screen {
         draw();
 
         int hoveredOption = drawManager.getGameplaySettingsOptionAt(this,
+                selectedDifficulty, selectedScreenShake,
                 inputManager.getMouseX(), inputManager.getMouseY());
 
         // Select a setting row when the mouse moves onto one of its values.
@@ -71,6 +73,10 @@ public class GameplaySettingsScreen extends Screen {
 
         if (newMouseClick && hoveredOption != -1
                 && inputDelay.checkFinished()) {
+            if (hoveredOption == CONFIRM_OPTION) {
+                confirmSettings();
+                return;
+            }
             selectedOption = getSettingIndex(hoveredOption);
             setSelectedValue(selectedOption, hoveredOption % VALUE_COUNT);
             AudioManager.playSFX("audio/sfx/menu_move.wav");
@@ -131,7 +137,8 @@ public class GameplaySettingsScreen extends Screen {
     }
 
     private static int getSettingIndex(final int option) {
-        return option == -1 ? -1 : option / VALUE_COUNT;
+        return option < 0 || option >= CONFIRM_OPTION
+                ? -1 : option / VALUE_COUNT;
     }
 
     private static int getScreenShakeOption(final double intensity) {
@@ -158,7 +165,8 @@ public class GameplaySettingsScreen extends Screen {
     private void draw() {
         drawManager.initDrawing(this);
         drawManager.drawGameplaySettings(this, selectedOption,
-                selectedDifficulty, selectedScreenShake);
+                selectedDifficulty, selectedScreenShake,
+                lastHoveredOption == CONFIRM_OPTION);
         drawManager.completeDrawing(this);
     }
 }

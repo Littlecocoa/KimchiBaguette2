@@ -152,8 +152,8 @@ public final class DrawManager {
     };
     /** Horizontal distance between gameplay setting values. */
     private static final int GAMEPLAY_VALUE_SPACING = 100;
-    /** Clickable width centered around each gameplay setting value. */
-    private static final int GAMEPLAY_VALUE_HIT_WIDTH = 80;
+    /** Mouse-only save action shown below the gameplay setting values. */
+    private static final String GAMEPLAY_SETTINGS_CONFIRM = "Confirm";
     /** Width of the column holding the audio settings. */
     private static final int AUDIO_COLUMN_WIDTH = 200;
     /** Space between an audio option name and its volume bar. */
@@ -1216,7 +1216,7 @@ public final class DrawManager {
 
     public void drawGameplaySettings(final Screen screen,
             final int selectedOption, final int difficulty,
-            final int screenShake) {
+            final int screenShake, final boolean confirmHovered) {
         int[] selectedValues = { difficulty, screenShake };
         int firstLabelY = getGameplaySettingsFirstLabelY(screen);
         int rowSpacing = getGameplaySettingsRowSpacing();
@@ -1233,9 +1233,9 @@ public final class DrawManager {
 
             for (int value = 0; value < GAMEPLAY_SETTINGS_VALUES[i].length;
                     value++) {
-                String text = GAMEPLAY_SETTINGS_VALUES[i][value];
+                String text = getGameplaySettingsValueText(i, value,
+                        selectedValues[i]);
                 if (value == selectedValues[i]) {
-                    text = "< " + text + " >";
                     backBufferGraphics.setColor(Color.GREEN);
                 } else {
                     backBufferGraphics.setColor(Color.WHITE);
@@ -1246,6 +1246,10 @@ public final class DrawManager {
                         getGameplaySettingsValueY(screen, i));
             }
         }
+
+        backBufferGraphics.setColor(confirmHovered ? Color.GREEN : Color.WHITE);
+        drawCenteredRegularString(screen, GAMEPLAY_SETTINGS_CONFIRM,
+                getGameplaySettingsConfirmY(screen));
 
         backBufferGraphics.setColor(Color.GRAY);
         drawCenteredRegularString(screen,
@@ -2051,13 +2055,20 @@ public final class DrawManager {
     /**
      * Returns the gameplay settings option under the mouse.
      *
-     * @return Flattened row/value index of the hovered value, or -1 if none.
+     * @param difficulty
+     *                   Selected difficulty value.
+     * @param screenShake
+     *                   Selected screen shake value.
+     * @return Flattened row/value index, the following index for Confirm,
+     *         or -1 if none.
      */
     public int getGameplaySettingsOptionAt(final Screen screen,
+            final int difficulty, final int screenShake,
             final int mouseX, final int mouseY) {
         if (fontRegularMetrics == null)
             return -1;
 
+        int[] selectedValues = { difficulty, screenShake };
         for (int row = 0; row < GAMEPLAY_SETTINGS_VALUES.length; row++) {
             int baseline = getGameplaySettingsValueY(screen, row);
             int top = baseline - fontRegularMetrics.getAscent();
@@ -2068,15 +2079,35 @@ public final class DrawManager {
 
             for (int value = 0; value < GAMEPLAY_SETTINGS_VALUES[row].length;
                     value++) {
+                String text = getGameplaySettingsValueText(row, value,
+                        selectedValues[row]);
+                int textWidth = fontRegularMetrics.stringWidth(text);
                 int centerX = getGameplaySettingsValueCenterX(screen, value);
-                int left = centerX - GAMEPLAY_VALUE_HIT_WIDTH / 2;
+                int left = centerX - textWidth / 2;
                 if (mouseX >= left
-                        && mouseX <= left + GAMEPLAY_VALUE_HIT_WIDTH)
+                        && mouseX <= left + textWidth)
                     return row * GAMEPLAY_SETTINGS_VALUES[row].length + value;
             }
         }
 
+        int confirmY = getGameplaySettingsConfirmY(screen);
+        int confirmTop = confirmY - fontRegularMetrics.getAscent();
+        int confirmBottom = confirmY + fontRegularMetrics.getDescent();
+        int confirmWidth = fontRegularMetrics
+                .stringWidth(GAMEPLAY_SETTINGS_CONFIRM);
+        int confirmLeft = screen.getWidth() / 2 - confirmWidth / 2;
+        if (mouseX >= confirmLeft && mouseX <= confirmLeft + confirmWidth
+                && mouseY >= confirmTop && mouseY <= confirmBottom)
+            return GAMEPLAY_SETTINGS_OPTIONS.length
+                    * GAMEPLAY_SETTINGS_VALUES[0].length;
+
         return -1;
+    }
+
+    private String getGameplaySettingsValueText(final int row, final int value,
+            final int selectedValue) {
+        String text = GAMEPLAY_SETTINGS_VALUES[row][value];
+        return value == selectedValue ? "< " + text + " >" : text;
     }
 
     private int getGameplaySettingsFirstLabelY(final Screen screen) {
@@ -2091,6 +2122,12 @@ public final class DrawManager {
         return getGameplaySettingsFirstLabelY(screen)
                 + fontRegularMetrics.getHeight() * 2
                 + row * getGameplaySettingsRowSpacing();
+    }
+
+    private int getGameplaySettingsConfirmY(final Screen screen) {
+        return getGameplaySettingsValueY(screen,
+                GAMEPLAY_SETTINGS_OPTIONS.length - 1)
+                + fontRegularMetrics.getHeight() * 3;
     }
 
     private int getGameplaySettingsValueCenterX(final Screen screen,

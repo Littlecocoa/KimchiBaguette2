@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import audio.AudioManager;
 import engine.Core;
+import engine.DrawManager;
 import engine.GameplayConfig;
 import java.awt.Canvas;
+import java.awt.FontMetrics;
 import java.awt.Point;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -76,8 +78,9 @@ class GameplaySettingsScreenTest {
     }
 
     @Test
-    void mouseClicksChangeBothValuesWithoutClosingUntilSpaceConfirms() {
-        Point hardDifficulty = findOption(2);
+    void mouseCanChangeBothValuesAndConfirmWithoutKeyboard() {
+        Point hardDifficulty = findOption(2,
+                GameplayConfig.NORMAL, 2);
         moveMouse(hardDifficulty);
         click(hardDifficulty);
 
@@ -86,7 +89,8 @@ class GameplaySettingsScreenTest {
         assertEquals(GameplayConfig.SCREEN_SHAKE_NORMAL,
                 GameplayConfig.getScreenShakeIntensity());
 
-        Point lowScreenShake = findOption(4);
+        Point lowScreenShake = findOption(4,
+                GameplayConfig.HARD, 2);
         moveMouse(lowScreenShake);
         click(lowScreenShake);
 
@@ -95,12 +99,31 @@ class GameplaySettingsScreenTest {
         assertEquals(GameplayConfig.SCREEN_SHAKE_NORMAL,
                 GameplayConfig.getScreenShakeIntensity());
 
-        tap(KeyEvent.VK_SPACE);
+        Point confirm = findOption(6, GameplayConfig.HARD, 1);
+        moveMouse(confirm);
+        click(confirm);
 
         assertFalse(screen.isRunning);
         assertEquals(GameplayConfig.HARD, GameplayConfig.getDifficulty());
         assertEquals(GameplayConfig.SCREEN_SHAKE_LOW,
                 GameplayConfig.getScreenShakeIntensity());
+    }
+
+    @Test
+    void selectedValueBracketsAreInsideTheMouseHitArea() throws Exception {
+        Point normalDifficulty = findOption(1,
+                GameplayConfig.NORMAL, 2);
+        FontMetrics metrics = gameplayFontMetrics();
+        int width = metrics.stringWidth("< Normal >");
+        int centerX = screen.getWidth() / 2;
+        int left = centerX - width / 2;
+
+        assertEquals(1, Core.getDrawManager().getGameplaySettingsOptionAt(
+                screen, GameplayConfig.NORMAL, 2,
+                left, normalDifficulty.y));
+        assertEquals(1, Core.getDrawManager().getGameplaySettingsOptionAt(
+                screen, GameplayConfig.NORMAL, 2,
+                left + width, normalDifficulty.y));
     }
 
     @Test
@@ -162,15 +185,22 @@ class GameplaySettingsScreenTest {
         }
     }
 
-    private Point findOption(final int option) {
+    private Point findOption(final int option, final int difficulty,
+            final int screenShake) {
         for (int y = 0; y < screen.getHeight(); y++) {
             for (int x = 0; x < screen.getWidth(); x++) {
                 if (Core.getDrawManager().getGameplaySettingsOptionAt(
-                        screen, x, y) == option)
+                        screen, difficulty, screenShake, x, y) == option)
                     return new Point(x, y);
             }
         }
         throw new AssertionError("Gameplay option not found: " + option);
+    }
+
+    private FontMetrics gameplayFontMetrics() throws Exception {
+        var field = DrawManager.class.getDeclaredField("fontRegularMetrics");
+        field.setAccessible(true);
+        return (FontMetrics) field.get(null);
     }
 
     private void moveMouse(final Point point) {
