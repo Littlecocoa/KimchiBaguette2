@@ -25,6 +25,7 @@ import engine.Cooldown;
 import engine.ControlsConfig;
 import engine.Core;
 import engine.DrawManager.SpriteType;
+import engine.GameClock;
 import engine.GameState;
 import entity.Bullet;
 import entity.BulletPool;
@@ -82,22 +83,22 @@ public class InfiniteGameScreen extends Screen {
 	private int lastCountdown = -1;
 
 	public InfiniteGameScreen(final GameState gameState, final int width,
-			final int height, final int fps) {
+							  final int height, final int fps) {
 		this(gameState, width, height, fps, null);
 	}
 
 	public InfiniteGameScreen(final GameState gameState, final int width,
-			final int height, final int fps, final RunSession runSession) {
+							  final int height, final int fps, final RunSession runSession) {
 		super(width, height, fps);
 		this.runSession = runSession;
 		this.recordsService = Core.getRecordsService();
 		this.recordsEvents.subscribe(EnemyDefeatedEvent.class,
 				new GameplayEventListener<EnemyDefeatedEvent>() {
-			public void onEvent(final EnemyDefeatedEvent event) {
-				if (recordsService != null)
-					recordsService.enemyDefeated(event.getRunId(), event.getEventId());
-			}
-		});
+					public void onEvent(final EnemyDefeatedEvent event) {
+						if (recordsService != null)
+							recordsService.enemyDefeated(event.getRunId(), event.getEventId());
+					}
+				});
 
 		this.score = gameState.getScore();
 		this.lives = gameState.getLivesRemaining();
@@ -122,6 +123,8 @@ public class InfiniteGameScreen extends Screen {
 		this.inputDelay = Core.getCooldown(INPUT_DELAY);
 		this.inputDelay.reset();
 
+		this.paused = false;
+
 		AudioManager.playBGM("audio/bgm/music_game.wav");
 	}
 
@@ -139,13 +142,32 @@ public class InfiniteGameScreen extends Screen {
 			long now = System.currentTimeMillis();
 			if (this.visibleAchievement == null || now >= this.achievementNoticeUntil) {
 				this.visibleAchievement = this.recordsService.pollNotification();
-                if (this.visibleAchievement != null) {
-                    AudioManager.playSFX("audio/sfx/achievement_unlock.wav");
-                }
+				if (this.visibleAchievement != null) {
+					AudioManager.playSFX("audio/sfx/achievement_unlock.wav");
+				}
 				this.achievementNoticeUntil = this.visibleAchievement == null ? 0 : now + 3000;
 			}
 		}
 
+		// Handle ESC toggle only during active gameplay (after inputDelay, before gameOver).
+		if (this.inputDelay.checkFinished() && !this.gameOver && isPauseKeyJustPressed()) {
+			togglePause();
+			if (this.paused) {
+				GameClock.pause();
+				AudioManager.pauseBGM();
+				if (this.runSession != null)
+					this.runSession.stopActiveSegment(System.nanoTime());
+			} else {
+				GameClock.resume();
+				AudioManager.resumeBGM();
+				ScreenShake.reset();
+			}
+		}
+
+		if (this.paused) {
+			draw();
+			return;
+		}
 
 		//update the current lives remaining to the DifficultyAdjustWhilePlaying class
 		DifficultyAdjustWhilePlaying.getInstance().update(this.lives);
@@ -154,15 +176,6 @@ public class InfiniteGameScreen extends Screen {
 			if (runSession != null) runSession.startActiveSegment(System.nanoTime());
 			if (runSession != null && recordsService != null)
 				recordsService.activeDuration(runSession.getRunId(), runSession.getActiveDurationMillis(System.nanoTime()));
-			if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
-				this.abandoned = true;
-				if (recordsService != null && runSession != null) recordsService.abandonRun(runSession.getRunId());
-				if (runSession != null) runSession.stopActiveSegment(System.nanoTime());
-				// Leaving with Esc plays the same back sound as the menu screens.
-				AudioManager.playSFX("audio/sfx/menu_back.wav");
-				this.isRunning = false;
-				return;
-			}
 
 			updatePlayerControls();
 			spawnEnemy();
@@ -316,6 +329,9 @@ public class InfiniteGameScreen extends Screen {
 			drawManager.drawHorizontalLine(this,
 					this.height / 2 + this.height / 12);
 		}
+		if (this.paused) {
+			drawManager.drawPaused(this);
+		}
 		drawManager.completeDrawing(this);
 	}
 
@@ -362,8 +378,8 @@ public class InfiniteGameScreen extends Screen {
 				if (checkCollision(bullet, enemy)) {
 					this.score += enemy.getPointValue();
 					this.shipsDestroyed++;
-                    recordEnemyDefeat(enemy);
-                    AudioManager.playSFX("audio/sfx/enemy_explosion.wav");
+					recordEnemyDefeat(enemy);
+					AudioManager.playSFX("audio/sfx/enemy_explosion.wav");
 					this.particleSystem.spawnEnemyExplosion(
 							enemy.getPositionX() + enemy.getWidth() / 2,
 							enemy.getPositionY() + enemy.getHeight() / 2);

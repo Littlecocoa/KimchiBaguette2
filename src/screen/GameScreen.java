@@ -9,18 +9,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.Random;
 import campaign.CampaignStageData;
-import engine.DifficultyAdjustWhilePlaying;
-import entity.item.ChameleonHull;
-import entity.item.ItemManager;
-import entity.item.ShieldItem;
 import engine.Cooldown;
 import engine.CampaignUpgrades;
 import engine.Core;
+import engine.GameClock;
 import engine.GameSettings;
 import engine.GameState;
-import engine.GameplayConfig;
 import engine.ControlsConfig;
+import engine.DifficultyAdjustWhilePlaying;
+import engine.GameplayConfig;
 import engine.LevelGameplayAdapter;
+import entity.item.ChameleonHull;
+import entity.item.ItemManager;
+import entity.item.ShieldItem;
 import level.LevelDefinition;
 import level.WaveDefinition;
 import entity.Bullet;
@@ -30,6 +31,7 @@ import boss.BossManager;
 import boss.BossSpawnRequest;
 import boss.BossStatus;
 import boss.LoggingBossEventListener;
+import boss.dialogue.BossDialogueDirector;
 import entity.BonusEnemyManager;
 import entity.Boss;
 import entity.BossBullet;
@@ -138,6 +140,15 @@ public class GameScreen extends Screen {
 	/** Boss of the level, its attacks, events and links to other systems.
 	 * The only source of truth for the boss. */
 	private BossManager bossManager;
+	/** Picks the line the boss is saying, from the boss events. */
+	private final BossDialogueDirector dialogueDirector =
+			new BossDialogueDirector();
+	/** Last horizontal center of the boss, where its speech bubble points. */
+	private int bossSpeechX;
+	/** Last top edge of the boss, where its speech bubble points. */
+	private int bossSpeechY;
+	/** True once the boss has been on screen, so the bubble has a place. */
+	private boolean bossSpeechSeen;
 	/** Set of all bullets fired by the boss. */
 	private Set<BossBullet> bossBullets;
 
@@ -518,6 +529,8 @@ public class GameScreen extends Screen {
 		// Logs boss events for debugging.
 		this.bossManager.getEventManager().addListener(
 				new LoggingBossEventListener());
+		// Boss lines shown in a speech bubble.
+		this.bossManager.getEventManager().addListener(this.dialogueDirector);
 		// Boss events also go onto the shared gameplay bus, so Sound,
 		// Currency and Records can subscribe to BossEvent.class there, and
 		// drive the effects, sounds and records handled on this screen.
@@ -551,6 +564,7 @@ public class GameScreen extends Screen {
         this.gameStartTime = System.currentTimeMillis();
         this.inputDelay = Core.getCooldown(INPUT_DELAY);
         this.inputDelay.reset();
+		this.paused = false;
 
 		if (this.bonusLife) {
 			AudioManager.playSFX("audio/sfx/bonus_life.wav");
@@ -595,6 +609,28 @@ public class GameScreen extends Screen {
 	 */
 	protected final void update() {
 		super.update();
+		if (this.inputDelay.checkFinished() && !this.levelFinished && isPauseKeyJustPressed()) {
+			togglePause();
+			if (isPaused()) {
+				GameClock.pause();
+				AudioManager.pauseBGM();
+				if (this.runSession != null) {
+					this.runSession.stopActiveSegment(System.nanoTime());
+				}
+			} else {
+				GameClock.resume();
+				AudioManager.resumeBGM();
+				ScreenShake.reset();
+				if (this.runSession != null) {
+					this.runSession.startActiveSegment(System.nanoTime());
+				}
+			}
+		}
+
+		if (isPaused()) {
+			draw();
+			return;
+		}
 		if (this.recordsService != null) {
 			long now = System.currentTimeMillis();
 			if (this.visibleAchievement == null || now >= this.achievementNoticeUntil) {
@@ -918,6 +954,19 @@ public class GameScreen extends Screen {
 
         drawManager.drawFloatingScores(floatingScoreHud, this);
 
+		// Boss speech. A defeated boss leaves the screen before its line ends,
+		// so the bubble stays at the last place the boss was seen. This only
+		// relies on the boss shown here, not on BossManager keeping it.
+		if (boss != null) {
+			this.bossSpeechX = boss.getPositionX() + boss.getWidth() / 2;
+			this.bossSpeechY = boss.getPositionY();
+			this.bossSpeechSeen = true;
+		}
+		String bossLine = this.dialogueDirector.getActiveLine();
+		if (bossLine != null && this.bossSpeechSeen)
+			drawManager.drawBossSpeech(this, bossLine, this.bossSpeechX,
+					this.bossSpeechY);
+
 		// Interface.
 		drawManager.drawScore(this, this.score);
 		drawManager.drawLives(this, this.playerStatus.getLives(),
@@ -965,7 +1014,10 @@ public class GameScreen extends Screen {
 
         if (this.visibleAchievement != null)
             drawManager.drawAchievementNotice(this, this.visibleAchievement);
-        drawManager.completeDrawing(this);
+		if (isPaused()) {
+			drawManager.drawPaused(this);
+		}
+		drawManager.completeDrawing(this);
     }
 
     /**

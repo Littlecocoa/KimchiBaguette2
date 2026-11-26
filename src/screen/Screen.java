@@ -55,6 +55,11 @@ public class Screen {
 	/** Checks if the mute key was held down in the previous frame. */
 	private static boolean muteKeyWasDown;
 
+	/** Checks if the pause key (ESC) was held down in the previous frame. */
+	private boolean pauseKeyWasDown;
+	/** Whether the screen is currently paused. */
+	protected boolean paused;
+
 	/**
 	 * Constructor, establishes the properties of the screen.
 	 *
@@ -103,7 +108,9 @@ public class Screen {
 					(currentTime - previousTime) / 1_000_000_000.0;
 			previousTime = currentTime;
 
-			this.starfield.update(deltaSeconds);
+			if (!this.paused) {
+				this.starfield.update(deltaSeconds);
+			}
 			update();
 
 			time = (1000 / this.fps) - (System.currentTimeMillis() - time);
@@ -185,5 +192,34 @@ public class Screen {
 
 	public final void drawBackground(final Graphics graphics) {
 		this.starfield.draw(graphics);
+	}
+
+	/**
+	 * Checks whether the pause key (ESC) was just pressed on this frame.
+	 * Edge-triggered: holding ESC returns true only once.
+	 *
+	 * @return True on the rising edge of ESC.
+	 */
+	protected final boolean isPauseKeyJustPressed() {
+		boolean pauseKeyDown = inputManager.isKeyDown(KeyEvent.VK_ESCAPE);
+		boolean justPressed = pauseKeyDown && !this.pauseKeyWasDown;
+		this.pauseKeyWasDown = pauseKeyDown;
+		return justPressed;
+	}
+
+	/**
+	 * Toggles the pause state on or off.
+	 */
+	protected void togglePause() {
+		this.paused = !this.paused;
+	}
+
+	/**
+	 * Returns whether the screen is currently paused.
+	 *
+	 * @return True if paused.
+	 */
+	public final boolean isPaused() {
+		return this.paused;
 	}
 }

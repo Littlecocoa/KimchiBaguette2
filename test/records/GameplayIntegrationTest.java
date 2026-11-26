@@ -91,9 +91,8 @@ public final class GameplayIntegrationTest {
         try { call(game,"update"); }
         finally { Arrays.fill(keys(),false); }
         long stopped=session.getActiveDurationMillis(System.nanoTime());
-        check(game.isAbandoned(),"Escape marks infinite run abandoned");
-        check(session.getActiveDurationMillis(System.nanoTime()+5000000000L)==stopped,"Escape stops active timing");
-        check(!service.enemyDefeated("timing","late"),"Escape invalidates active achievement events");
+		check(game.isPaused() && !game.isAbandoned(),"Escape pauses infinite run without abandoning it");
+		check(session.getActiveDurationMillis(System.nanoTime()+5000000000L)==stopped,"Escape stops active timing");
         service.startRun("death"); RunSession deadSession=new RunSession("death");
         InfiniteGameScreen dead=new InfiniteGameScreen(new GameState(1,100,0,2,1),448,520,60,deadSession);
         dead.initialize(); set(dead,"inputDelay",Core.getCooldown(0)); call(dead,"update");
