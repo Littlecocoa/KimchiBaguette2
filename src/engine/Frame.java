@@ -1,5 +1,8 @@
 package engine;
 
+import java.awt.BorderLayout;
+import java.awt.Canvas;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
@@ -22,6 +25,13 @@ import screen.Screen;
  * whole-number multiple of it, so the window can grow without the game having
  * to know. F11 fills the screen, F9 steps through the scales.
  *
+ * The game is presented on a canvas of its own rather than on the window. A
+ * canvas has one coordinate system — its own — so the area being drawn into
+ * and the corner it starts at come from the same place, with no window
+ * decoration to subtract and no guessing about where a buffer strategy's
+ * surface begins, which is not the same on every platform. Swing also has
+ * nothing of its own inside the window left to paint over the game.
+ *
  * @author <a href="mailto:RobertoIA1987@gmail.com">Roberto Izquierdo Amo</a>
  *
  */
@@ -34,6 +44,8 @@ public class Frame extends JFrame {
 	private int height;
 	/** Screen currently shown. */
 	private Screen currentScreen;
+	/** What the game is presented on, filling the content area. */
+	private final Canvas canvas = new Canvas();
 	/** Display change asked for by a key, applied between frames. */
 	private volatile boolean displayChangePending;
 	/** Scale the window is showing, or 0 before it is first shown. */
@@ -80,21 +92,27 @@ public class Frame extends JFrame {
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		setTitle("Invaders");
 
-		// Nothing inside the window is painted by Swing: the frame is presented
-		// whole, every frame, through a buffer strategy. Left to itself Swing
-		// repaints the content pane on a resize and fills it with its own
-		// background, which lands on the very surface being flipped — on
-		// Windows that showed up as a pale frame around the image.
+		// Nothing inside the window is painted by Swing: every frame is
+		// presented whole, through a buffer strategy on the canvas.
 		setIgnoreRepaint(true);
 		getRootPane().setIgnoreRepaint(true);
 		getContentPane().setIgnoreRepaint(true);
+		canvas.setIgnoreRepaint(true);
+		canvas.setBackground(Color.BLACK);
+		// Keys belong to the window, so the canvas must not take the focus
+		// away from it.
+		canvas.setFocusable(false);
+		getContentPane().setLayout(new BorderLayout());
+		getContentPane().add(canvas, BorderLayout.CENTER);
 
 		addKeyListener(Core.getInputManager());
 		// On the window rather than in a screen, so it works everywhere,
 		// including in the middle of a level.
 		addKeyListener(new DisplayKeys());
-		getContentPane().addMouseListener(Core.getInputManager());
-		getContentPane().addMouseMotionListener(Core.getInputManager());
+		// On the canvas, so a pointer position is measured from the same
+		// corner the image is drawn from.
+		canvas.addMouseListener(Core.getInputManager());
+		canvas.addMouseMotionListener(Core.getInputManager());
 
 		applyDisplaySettings();
 	}
@@ -136,6 +154,14 @@ public class Frame extends JFrame {
 
 	public final int getHeight() {
 		return this.height;
+	}
+
+	/**
+	 * @return What the game is presented on. Its size is the area to draw in,
+	 *         and its corner is where to start.
+	 */
+	public final Canvas getRenderTarget() {
+		return this.canvas;
 	}
 
 	/**
@@ -375,7 +401,7 @@ public class Frame extends JFrame {
 	 * Releases the buffers tied to the window in its current shape.
 	 */
 	private void discardBufferStrategy() {
-		BufferStrategy strategy = getBufferStrategy();
+		BufferStrategy strategy = this.canvas.getBufferStrategy();
 		if (strategy != null)
 			strategy.dispose();
 	}

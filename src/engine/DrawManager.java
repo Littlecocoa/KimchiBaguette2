@@ -3,13 +3,13 @@ package engine;
 import entity.ShipType;
 import entity.item.ChameleonHull;
 
+import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontFormatException;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
@@ -1661,10 +1661,14 @@ public final class DrawManager {
         if (frame == null)
             return null;
 
-        int areaWidth = frame.getContentPane().getWidth();
-        int areaHeight = frame.getContentPane().getHeight();
+        Canvas target = frame.getRenderTarget();
+        int areaWidth = target.getWidth();
+        int areaHeight = target.getHeight();
+        if (areaWidth <= 0 || areaHeight <= 0)
+            // No canvas on screen yet. The next frame will try again.
+            return null;
 
-        BufferStrategy strategy = frame.getBufferStrategy();
+        BufferStrategy strategy = target.getBufferStrategy();
         if (strategy != null && areaWidth == strategyWidth
                 && areaHeight == strategyHeight)
             return strategy;
@@ -1678,17 +1682,14 @@ public final class DrawManager {
             strategy.dispose();
 
         try {
-            // We paint every frame ourselves, so Swing repainting on top of it
-            // would only cause tearing.
-            frame.setIgnoreRepaint(true);
-            frame.createBufferStrategy(BUFFER_COUNT);
+            target.createBufferStrategy(BUFFER_COUNT);
         } catch (IllegalStateException e) {
-            // Frame not displayable yet. The next frame will try again.
+            // Canvas not displayable yet. The next frame will try again.
             return null;
         }
         strategyWidth = areaWidth;
         strategyHeight = areaHeight;
-        return frame.getBufferStrategy();
+        return target.getBufferStrategy();
     }
 
     /**
@@ -1706,9 +1707,12 @@ public final class DrawManager {
      */
     private void present(final Graphics drawGraphics, final Screen screen,
             final int shakeX, final int shakeY) {
-        Insets insets = frame.getInsets();
-        int areaWidth = frame.getContentPane().getWidth();
-        int areaHeight = frame.getContentPane().getHeight();
+        // The canvas the frame is presented on: one coordinate system, so the
+        // size below and the corner the drawing starts at are the same
+        // component's. The window decoration does not come into it.
+        Canvas target = frame.getRenderTarget();
+        int areaWidth = target.getWidth();
+        int areaHeight = target.getHeight();
 
         int logicalWidth = screen.getWidth();
         int logicalHeight = screen.getHeight();
@@ -1750,15 +1754,13 @@ public final class DrawManager {
 
         // The shake is measured in logical pixels, so it has to grow with
         // the image or it would feel weaker the more we scale up.
-        int originX = insets.left + marginX
-                + shakeX * imageWidth / logicalWidth;
-        int originY = insets.top + marginY
-                + shakeY * imageHeight / logicalHeight;
+        int originX = marginX + shakeX * imageWidth / logicalWidth;
+        int originY = marginY + shakeY * imageHeight / logicalHeight;
 
-        // Clipped so that a shake offset cannot smear over the window border.
-        drawGraphics.setClip(insets.left, insets.top, areaWidth, areaHeight);
+        // Clipped so that a shake offset cannot smear over the edge.
+        drawGraphics.setClip(0, 0, areaWidth, areaHeight);
         drawGraphics.setColor(Color.BLACK);
-        drawGraphics.fillRect(insets.left, insets.top, areaWidth, areaHeight);
+        drawGraphics.fillRect(0, 0, areaWidth, areaHeight);
 
         if (drawGraphics instanceof Graphics2D)
             // Nearest neighbour for a whole-number scale, where anything else
@@ -1773,7 +1775,7 @@ public final class DrawManager {
                                     .VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
 
         drawGraphics.drawImage(source, originX, originY, imageWidth,
-                imageHeight, frame);
+                imageHeight, target);
     }
 
     /**
@@ -1858,11 +1860,11 @@ public final class DrawManager {
     /**
      * Margin that centres the image in the space available.
      *
-     * Clamped at zero because the frame can report a content area smaller than
-     * the logical size: Frame derives that size with the bottom inset added
-     * rather than subtracted, which is nothing on macOS but is real on Windows.
-     * Without the clamp the image would be pulled up by that much while the
-     * mouse kept reading unshifted coordinates, and every menu would be off.
+     * Clamped at zero because the area can be smaller than the image: a
+     * window dragged below the game's own size, or one frame's lag between a
+     * resize and the canvas being laid out again. A negative margin would
+     * pull the image off its corner while the pointer kept reading from that
+     * corner, and every menu would be off by the difference.
      *
      * @param area
      *               Space available along this axis.
