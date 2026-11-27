@@ -23,9 +23,12 @@ public final class InputManager implements KeyListener, MouseListener, MouseMoti
 	/** Singleton instance of the class. */
 	private static InputManager instance;
 
-	/** Mouse position relative to the window content. */
-	private volatile int mouseX = -1;
-	private volatile int mouseY = -1;
+	/**
+	 * Mouse position relative to the window content, before the scale the
+	 * image is drawn at is undone.
+	 */
+	private volatile int screenMouseX = -1;
+	private volatile int screenMouseY = -1;
 
 	/** Left mouse button state. */
 	private volatile boolean mousePressed = false;
@@ -108,12 +111,27 @@ public final class InputManager implements KeyListener, MouseListener, MouseMoti
 
 	}
 
+	/**
+	 * Mouse position in the coordinates the game draws in.
+	 *
+	 * Where the pointer is in the window is not where it is in the game once
+	 * the image is scaled and centred, so the viewport is undone here. Doing
+	 * it when the position is read rather than when the event arrives keeps it
+	 * right across a scale change, which happens without the mouse moving.
+	 *
+	 * @return Logical x, or -1 when the pointer is not on the game image.
+	 */
 	public int getMouseX() {
-		return mouseX;
+		return DisplayConfig.toLogicalX(screenMouseX);
 	}
 
+	/**
+	 * Mouse position in the coordinates the game draws in.
+	 *
+	 * @return Logical y, or -1 when the pointer is not on the game image.
+	 */
 	public int getMouseY() {
-		return mouseY;
+		return DisplayConfig.toLogicalY(screenMouseY);
 	}
 
 	public boolean isMousePressed() {
@@ -136,26 +154,26 @@ public final class InputManager implements KeyListener, MouseListener, MouseMoti
 
 	@Override
 	public void mouseMoved(MouseEvent e) {
-		mouseX = e.getX();
-		mouseY = e.getY();
+		screenMouseX = e.getX();
+		screenMouseY = e.getY();
 	}
 
 	@Override
 	public void mouseDragged(MouseEvent e) {
-		mouseX = e.getX();
-		mouseY = e.getY();
+		screenMouseX = e.getX();
+		screenMouseY = e.getY();
 	}
 
 	@Override
 	public void mouseExited(MouseEvent e) {
-		mouseX = -1;
-		mouseY = -1;
+		screenMouseX = -1;
+		screenMouseY = -1;
 	}
 
 	@Override
 	public void mouseEntered(MouseEvent e) {
-		mouseX = e.getX();
-		mouseY = e.getY();
+		screenMouseX = e.getX();
+		screenMouseY = e.getY();
 	}
 
 	@Override

@@ -55,10 +55,10 @@ public final class IntegerScaleTest {
 		check(DrawManager.letterbox(1001, 984) == 8,
 				"An odd remainder rounds down rather than overshooting");
 
-		// Frame derives its logical size with the bottom inset added instead
-		// of subtracted, so on Windows the content area comes out smaller than
-		// the logical size. Without the clamp the image would be pulled up by
-		// the bottom inset while the mouse kept reading unshifted coordinates.
+		// An area smaller than the image: a window dragged below the game's
+		// own size, or one frame between a resize and the canvas being laid
+		// out again. The image stays on its corner and is cropped, rather
+		// than being pulled off it while the pointer reads from it.
 		check(DrawManager.letterbox(481, 497) == 0,
 				"A content area smaller than the image still starts at the edge");
 

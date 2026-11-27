@@ -114,6 +114,7 @@ def smokeTestClasses = [
     'engine.BossSpeechBubbleTest',
     'engine.CooldownVarianceTest',
     'engine.CoreDifficultySettingsTest',
+    'engine.DisplayConfigTest',
     'engine.IntegerScaleTest',
     'entity.BossDefeatTest',
     'entity.BossPhaseTest',
@@ -212,6 +213,28 @@ tasks.register('smokeTest') {
     description = 'Runs all standalone main() regression checks.'
     dependsOn smokeTasks
     dependsOn tasks.named('verifyTestRegistration')
+}
+
+// Needs a display, so it stays out of check. See docs/Display_Scaling_Controls.md.
+tasks.register('displayScalingDemo', JavaExec) {
+    group = 'verification'
+    description = 'Drives a window through every scale and fullscreen, checking the pointer.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'engine.DisplayScalingDemo'
+    enableAssertions = true
+    systemProperty 'file.encoding', 'UTF-8'
+}
+
+// Needs a display, so it stays out of check. KAN-53, PRD §7 step 4.
+tasks.register('bossBattleIntegrationDemo', JavaExec) {
+    group = 'verification'
+    description = 'Runs one boss fight with scaling, shake and dialogue all on.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'screen.BossBattleIntegrationDemo'
+    enableAssertions = true
+    systemProperty 'file.encoding', 'UTF-8'
 }
 
 tasks.register('testRecords') {
