@@ -616,8 +616,24 @@ public class GameScreen extends Screen {
 	 */
 	protected final void update() {
 		super.update();
-		if (this.inputDelay.checkFinished() && !this.levelFinished && isPauseKeyJustPressed()) {
-			togglePause();
+
+        boolean escapePressed = this.inputDelay.checkFinished()
+                && !this.levelFinished
+                && isPauseKeyJustPressed();
+
+        int pauseAction = -1;
+
+        if (isPaused() && !escapePressed) {
+            pauseAction = updatePauseMenu();
+        }
+
+        if (escapePressed || pauseAction == 0) {
+
+            if (escapePressed && isPaused()) {
+                AudioManager.playSFX("audio/sfx/menu_back.wav");
+            }
+
+            togglePause();
 			if (isPaused()) {
 				GameClock.pause();
 				AudioManager.pauseBGM();
@@ -635,15 +651,18 @@ public class GameScreen extends Screen {
 			}
 		}
 
-		if (isPaused()) {
-			draw();
-			return;
-		}
-		if (this.screenShakeFramePrepared) {
-			this.screenShakeFramePrepared = false;
-		} else {
-			ScreenShake.update();
-		}
+
+        if (isPaused() || pauseAction == 0) {
+            draw();
+            return;
+        }
+
+        if (this.screenShakeFramePrepared) {
+            this.screenShakeFramePrepared = false;
+        } else {
+            ScreenShake.update();
+        }
+
 		if (this.recordsService != null) {
 			long now = System.currentTimeMillis();
 			if (this.visibleAchievement == null || now >= this.achievementNoticeUntil) {

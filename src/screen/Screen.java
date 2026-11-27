@@ -1,3 +1,4 @@
+
 package screen;
 
 import java.awt.Insets;
@@ -6,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import audio.AudioControls;
+import audio.AudioManager;
 import engine.ControlsConfig;
 import engine.Cooldown;
 import engine.Core;
@@ -60,6 +62,21 @@ public class Screen {
 	/** Whether the screen is currently paused. */
 	protected boolean paused;
 
+	/** Number of options in the pause menu. */
+	private static final int PAUSE_OPTION_COUNT = 3;
+	/** Delay between pause menu selections. */
+	private static final int PAUSE_SELECTION_TIME = 200;
+	/** Currently selected pause menu option. */
+	private int selectedPauseOption = 0;
+	/** Pause menu option hovered on the previous frame. */
+	private int lastHoveredPauseOption = -1;
+	/** Previous state of the confirmation key. */
+	private boolean pauseSpaceWasDown;
+	/** Previous state of the mouse button. */
+	private boolean pauseMouseWasDown;
+	/** Navigation cooldown independent of the gameplay clock. */
+	private Cooldown pauseSelectionCooldown;
+
 	/**
 	 * Constructor, establishes the properties of the screen.
 	 *
@@ -82,6 +99,9 @@ public class Screen {
 		this.inputDelay = Core.getMenuCooldown(INPUT_DELAY);
 		this.inputDelay.reset();
 		this.returnCode = 0;
+		this.pauseSelectionCooldown =
+				Core.getMenuCooldown(PAUSE_SELECTION_TIME);
+		this.pauseSelectionCooldown.reset();
 	}
 
 	/**
@@ -212,6 +232,18 @@ public class Screen {
 	 */
 	protected void togglePause() {
 		this.paused = !this.paused;
+
+		if (this.paused) {
+			this.selectedPauseOption = 0;
+			this.lastHoveredPauseOption = -1;
+			this.pauseSelectionCooldown.reset();
+
+			this.pauseSpaceWasDown =
+					inputManager.isKeyDown(KeyEvent.VK_SPACE);
+
+			this.pauseMouseWasDown =
+					inputManager.isMousePressed();
+		}
 	}
 
 	/**
@@ -221,5 +253,87 @@ public class Screen {
 	 */
 	public final boolean isPaused() {
 		return this.paused;
+	}
+
+	/**
+	 * Returns the currently selected pause menu option.
+	 */
+	public final int getSelectedPauseOption() {
+		return this.selectedPauseOption;
+	}
+
+	/**
+	 * Handles keyboard and mouse navigation in the pause menu.
+	 *
+	 * @return Confirmed option, or -1 if no option was confirmed.
+	 */
+	protected final int updatePauseMenu() {
+
+		// Mouse navigation.
+		int hoveredOption = drawManager.getPauseMenuOptionAt(
+				this, inputManager.getMouseX(),
+				inputManager.getMouseY());
+
+		if (hoveredOption != this.lastHoveredPauseOption) {
+			this.lastHoveredPauseOption = hoveredOption;
+
+			if (hoveredOption != -1
+					&& hoveredOption != this.selectedPauseOption) {
+
+				this.selectedPauseOption = hoveredOption;
+				AudioManager.playSFX("audio/sfx/menu_move.wav");
+			}
+		}
+
+		// Detect a new mouse click.
+		boolean mouseDown = inputManager.isMousePressed();
+		boolean newClick = mouseDown && !this.pauseMouseWasDown;
+		this.pauseMouseWasDown = mouseDown;
+
+		// Detect a new Space press.
+		boolean spaceDown = inputManager.isKeyDown(KeyEvent.VK_SPACE);
+		boolean newSpacePress = spaceDown && !this.pauseSpaceWasDown;
+		this.pauseSpaceWasDown = spaceDown;
+
+		// Confirm with the mouse.
+		if (newClick && hoveredOption != -1) {
+			this.selectedPauseOption = hoveredOption;
+			AudioManager.playSFX("audio/sfx/menu_select.wav");
+			return this.selectedPauseOption;
+		}
+
+		// Confirm with Space.
+		if (newSpacePress) {
+			AudioManager.playSFX("audio/sfx/menu_select.wav");
+			return this.selectedPauseOption;
+		}
+
+		// Keyboard navigation.
+		if (!this.pauseSelectionCooldown.checkFinished()) {
+			return -1;
+		}
+
+		if (inputManager.isKeyDown(KeyEvent.VK_UP)
+				|| inputManager.isKeyDown(KeyEvent.VK_W)) {
+
+			this.selectedPauseOption =
+					(this.selectedPauseOption - 1
+							+ PAUSE_OPTION_COUNT) % PAUSE_OPTION_COUNT;
+
+			this.pauseSelectionCooldown.reset();
+			AudioManager.playSFX("audio/sfx/menu_move.wav");
+
+		} else if (inputManager.isKeyDown(KeyEvent.VK_DOWN)
+				|| inputManager.isKeyDown(KeyEvent.VK_S)) {
+
+			this.selectedPauseOption =
+					(this.selectedPauseOption + 1)
+							% PAUSE_OPTION_COUNT;
+
+			this.pauseSelectionCooldown.reset();
+			AudioManager.playSFX("audio/sfx/menu_move.wav");
+		}
+
+		return -1;
 	}
 }

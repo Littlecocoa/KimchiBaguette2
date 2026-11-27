@@ -154,8 +154,24 @@ public class InfiniteGameScreen extends Screen {
 		}
 
 		// Handle ESC toggle only during active gameplay (after inputDelay, before gameOver).
-		if (this.inputDelay.checkFinished() && !this.gameOver && isPauseKeyJustPressed()) {
-			togglePause();
+
+        boolean escapePressed = this.inputDelay.checkFinished()
+                && !this.gameOver
+                && isPauseKeyJustPressed();
+
+        int pauseAction = -1;
+
+        if (this.paused && !escapePressed) {
+            pauseAction = updatePauseMenu();
+        }
+
+        if (escapePressed || pauseAction == 0) {
+
+            if (escapePressed && isPaused()) {
+                AudioManager.playSFX("audio/sfx/menu_back.wav");
+            }
+
+            togglePause();
 			if (this.paused) {
 				GameClock.pause();
 				AudioManager.pauseBGM();
@@ -169,8 +185,8 @@ public class InfiniteGameScreen extends Screen {
 			}
 		}
 
-		if (this.paused) {
-			draw();
+        if (this.paused || pauseAction == 0) {
+            draw();
 			return;
 		}
 		ScreenShake.update();
