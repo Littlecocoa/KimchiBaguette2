@@ -4,9 +4,10 @@ Related tickets: KAN-32, KAN-33, KAN-35. Rendering half: KAN-34.
 
 The game draws in a fixed space of 448x520 logical pixels. Whatever size the
 window is, the image is drawn at the largest whole-number scale that fits it
-and centred, with the leftover space left black. Nothing in the game knows
-about any of this: screens still draw in 448x520 and read mouse positions in
-448x520.
+and centred, with the leftover space left black — unless a whole number would
+leave most of the screen black, in which case the screen is filled instead.
+Nothing in the game knows about any of this: screens still draw in 448x520 and
+read mouse positions in 448x520.
 
 ## How to make it bigger
 
@@ -53,12 +54,36 @@ scale that fits the screen, so a screen shorter than 1040 points shows the game
 at 1x with a wide black border rather than stretched. A non-integer scale would
 blur the pixel art, which looks worse than the border.
 
-## Why whole numbers only
+## Whole numbers, and when they are given up
 
 Scaling pixel art by 1.5 turns one source pixel into one screen pixel here and
 two there, and the sprites come out uneven. Integer scale plus a letterbox is
 what pixel games do instead. `DrawManager.integerScale` picks the scale and
 `DrawManager.letterbox` centres the result.
+
+The exception is a screen with no room for the next whole scale. A 520 tall
+game on a 982 tall screen can only double to 1040, so it stays at 1 and
+fullscreen looks exactly like the window — 58 points short of twice, and half
+the height wasted. There, the screen is filled: the back buffer is enlarged by
+`ceil(fit)` with nearest neighbour and then brought down to the size that fits
+with bilinear, which keeps the grid far closer to even than going straight
+there would. 448x520 becomes 896x1040 and then 846x982.
+
+Filling only happens when the whole-number scale covers less than 90% of what
+would fit, so a screen with room to spare stays pixel-exact:
+
+| Desktop | Fits | Whole | Covers | Result |
+| --- | --- | --- | --- | --- |
+| 1512x982 | 1.88 | 1 | 53% | filled to 846x982 |
+| 1366x768 | 1.47 | 1 | 68% | filled to 661x768 |
+| 2560x1440 | 2.77 | 2 | 72% | filled to 1241x1440 |
+| 1920x1080 | 2.07 | 2 | 96% | 2x, letterboxed |
+| 3840x2160 | 4.15 | 4 | 96% | 4x, letterboxed |
+
+The decision is made on the geometry alone, never on the fullscreen setting,
+because the green button and maximize do not go through that setting — and
+those are the routes that made this worth fixing. `DrawManager.fillsBetter`
+and `DrawManager.fittingScale` are the whole of it.
 
 ## Two things the window must not share
 
@@ -84,8 +109,11 @@ pointer is twice as far from the corner as the thing it is pointing at, so the
 position has to be divided back down before any of them sees it:
 
 ```
-logical = (position in the content area - letterbox) / scale
+logical = (position in the content area - letterbox) * game size / image size
 ```
+
+By the image size rather than by a scale, because a filled image is not a whole
+multiple of the game and dividing by a whole number would drift across it.
 
 `DrawManager` publishes where it put the image (`DisplayConfig.setViewport`),
 and `InputManager.getMouseX` and `getMouseY` undo it on the way out, so the
@@ -124,5 +152,9 @@ Four things only a person can check, in the game itself:
 3. In fullscreen, hover a menu entry and then the black border, and check the
    highlight follows the first and not the second.
 4. Use the window's own fullscreen (the green button, maximize) and drag the
-   window to an odd size, and check the image stays centred and sharp and the
-   menus still answer the pointer.
+   window to an odd size, and check the image stays centred and the menus
+   still answer the pointer.
+5. On a screen that gets filled rather than scaled by a whole number, look at
+   the sprites and the text. Filling trades some of the even pixel grid for
+   the screen, and whether that trade reads as sharp or as soft is the one
+   thing no test can answer.
