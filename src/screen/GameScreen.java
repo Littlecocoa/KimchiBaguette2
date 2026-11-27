@@ -213,6 +213,8 @@ public class GameScreen extends Screen {
 	private PlayerStatus playerStatus;
 	/** State of the debug shield key on the previous frame. */
 	private boolean shieldDebugKeyWasDown;
+	/** First shake frame was prepared before initialization events were sent. */
+	private boolean screenShakeFramePrepared;
     /** Total bullets shot by the player. */
     private int bulletsShot;
     /** Total ships destroyed by the player. */
@@ -488,6 +490,11 @@ public class GameScreen extends Screen {
 	 */
 	public final void initialize() {
 		super.initialize();
+		ScreenShake.reset();
+		ScreenShake.setIntensity(
+				GameplayConfig.getScreenShakeIntensity());
+		ScreenShake.update();
+		this.screenShakeFramePrepared = true;
 
 		enemyShipFormation = createFormation();
 
@@ -630,6 +637,7 @@ public class GameScreen extends Screen {
 			if (isPaused()) {
 				GameClock.pause();
 				AudioManager.pauseBGM();
+				ScreenShake.reset();
 				if (this.runSession != null) {
 					this.runSession.stopActiveSegment(System.nanoTime());
 				}
@@ -643,10 +651,18 @@ public class GameScreen extends Screen {
 			}
 		}
 
+
         if (isPaused() || pauseAction == 0) {
             draw();
             return;
         }
+
+        if (this.screenShakeFramePrepared) {
+            this.screenShakeFramePrepared = false;
+        } else {
+            ScreenShake.update();
+        }
+
 		if (this.recordsService != null) {
 			long now = System.currentTimeMillis();
 			if (this.visibleAchievement == null || now >= this.achievementNoticeUntil) {
@@ -667,6 +683,7 @@ public class GameScreen extends Screen {
 		clearSlowIfEnergyShieldActive();
 
         if (this.inputDelay.checkFinished() && !this.levelFinished) {
+			this.dialogueDirector.restartSpawnLine();
             if (this.runSession != null) this.runSession.startActiveSegment(System.nanoTime());
             if (this.runSession != null && this.recordsService != null)
                 this.recordsService.activeDuration(this.runSession.getRunId(),
@@ -979,7 +996,7 @@ public class GameScreen extends Screen {
 			this.bossSpeechSeen = true;
 		}
 		String bossLine = this.dialogueDirector.getActiveLine();
-		if (bossLine != null && this.bossSpeechSeen)
+		if (bossLine != null && this.bossSpeechSeen &&this.inputDelay.checkFinished())
 			drawManager.drawBossSpeech(this, bossLine, this.bossSpeechX,
 					this.bossSpeechY);
 

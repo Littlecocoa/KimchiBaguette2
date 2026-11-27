@@ -26,6 +26,7 @@ import engine.ControlsConfig;
 import engine.Core;
 import engine.DrawManager.SpriteType;
 import engine.GameClock;
+import engine.GameplayConfig;
 import engine.GameState;
 import entity.Bullet;
 import entity.BulletPool;
@@ -109,6 +110,9 @@ public class InfiniteGameScreen extends Screen {
 
 	public final void initialize() {
 		super.initialize();
+		ScreenShake.reset();
+		ScreenShake.setIntensity(
+				GameplayConfig.getScreenShakeIntensity());
 
 		this.ship = new Ship(this.width / 2, this.height - 30);
 		this.enemies = new ArrayList<ZigzagEnemyShip>();
@@ -171,6 +175,7 @@ public class InfiniteGameScreen extends Screen {
 			if (this.paused) {
 				GameClock.pause();
 				AudioManager.pauseBGM();
+				ScreenShake.reset();
 				if (this.runSession != null)
 					this.runSession.stopActiveSegment(System.nanoTime());
 			} else {
@@ -184,6 +189,7 @@ public class InfiniteGameScreen extends Screen {
             draw();
 			return;
 		}
+		ScreenShake.update();
 
 		//update the current lives remaining to the DifficultyAdjustWhilePlaying class
 		DifficultyAdjustWhilePlaying.getInstance().update(this.lives);
