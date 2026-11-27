@@ -158,7 +158,7 @@ public final class DisplayScalingDemo {
             final DrawManager drawManager, final Screen screen)
             throws Exception {
         Dimension window = frame.getSize();
-        Dimension content = frame.getContentPane().getSize();
+        Dimension content = frame.getRenderTarget().getSize();
         int scale = DisplayConfig.getViewportScale();
         int marginX = DrawManager.letterbox(content.width, WIDTH * scale);
         int marginY = DrawManager.letterbox(content.height, HEIGHT * scale);
@@ -274,8 +274,9 @@ public final class DisplayScalingDemo {
     private static void movePointer(final Frame frame, final int x,
             final int y) throws Exception {
         Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(
-                new MouseEvent(frame.getContentPane(), MouseEvent.MOUSE_MOVED,
-                        System.currentTimeMillis(), 0, x, y, 0, false));
+                new MouseEvent(frame.getRenderTarget(),
+                        MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0,
+                        x, y, 0, false));
         Thread.sleep(150);
     }
 
